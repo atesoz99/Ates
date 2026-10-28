@@ -23,6 +23,9 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
     private let loadingCover = UIView()
     private let loadErrorLabel = UILabel()
     private let retryButton = UIButton(type: .system)
+    private var interfaceLanguage = Locale.preferredLanguages.first?.hasPrefix("en") == true ? "en" : "tr"
+    private weak var launchLogo: UIImageView?
+    private var loadErrorText = ""
     private var contentRevealed = false
     private var exporting = false
     private var exportedURL: URL?
@@ -92,9 +95,10 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             ?? Bundle.main.url(forResource: "AppIcon-1024", withExtension: "png")
                 .flatMap { UIImage(contentsOfFile: $0.path) }
         let logo = UIImageView(image: image)
+        launchLogo = logo
         logo.contentMode = .scaleAspectFit
         logo.isAccessibilityElement = true
-        logo.accessibilityLabel = "Hesap yükleniyor"
+        logo.accessibilityLabel = nativeText("Hesap yükleniyor")
         logo.translatesAutoresizingMaskIntoConstraints = false
         loadingCover.addSubview(logo)
 
@@ -106,7 +110,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         loadErrorLabel.translatesAutoresizingMaskIntoConstraints = false
         loadingCover.addSubview(loadErrorLabel)
 
-        retryButton.setTitle("Tekrar dene", for: .normal)
+        retryButton.setTitle(nativeText("Tekrar dene"), for: .normal)
         retryButton.setTitleColor(.white, for: .normal)
         retryButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
         retryButton.isHidden = true
@@ -161,7 +165,8 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         loadingCover.layer.removeAllAnimations()
         loadingCover.alpha = 1
         loadingCover.isHidden = false
-        loadErrorLabel.text = message
+        loadErrorText = message
+        loadErrorLabel.text = nativeText(message)
         loadErrorLabel.isHidden = false
         retryButton.isHidden = false
     }
@@ -185,13 +190,30 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         return nil
     }
 
+    private func nativeText(_ text: String) -> String {
+        guard interfaceLanguage == "en" else { return text }
+        let english = [
+            "Hesap yükleniyor": "Hesap is loading",
+            "Tekrar dene": "Try again",
+            "Uygulama dosyası bulunamadı.": "The app file could not be found.",
+            "Uygulama yüklenemedi. Tekrar deneyebilirsin.": "The app could not be loaded. Please try again.",
+            "Uygulama içeriği kapandı. Tekrar deneyebilirsin.": "The app content was closed. Please try again.",
+            "Yedek dosyası oluşturulamadı.": "The backup file could not be created.",
+            "Bir hatırlatma zamanlanamadı.": "A reminder could not be scheduled.",
+            "Dosya okunamadı; geçerli bir Hesap yedeği seç.": "The file could not be read. Please select a valid Hesap backup."
+        ]
+        return english[text] ?? text
+    }
+
     private func deliver(_ payload: [String: Any]) {
+        var translatedPayload = payload
+        if let message = payload["message"] as? String { translatedPayload["message"] = nativeText(message) }
         webView.callAsyncJavaScript(
             "window.dispatchEvent(new CustomEvent('hesap-native', { detail: payload }));",
-            arguments: ["payload": payload], in: nil, in: .page, completionHandler: nil)
+            arguments: ["payload": translatedPayload], in: nil, in: .page, completionHandler: nil)
     }
     @objc private func refresh() {
-        webView.evaluateJavaScript("window.Hesap?.refreshNotifications()", completionHandler: nil)
+        webView.evaluateJavaScript("window.Hesap?.refreshNotifications(undefined, true)", completionHandler: nil)
     }
 
     func userContentController(_ userContentController: WKUserContentController,
@@ -202,6 +224,12 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
               webView.url?.lastPathComponent == "finans-ilk-prototip.html",
               let body = message.body as? [String: Any], let action = body["action"] as? String else { return }
         switch action {
+        case "language":
+            guard let selected = body["language"] as? String, ["tr", "en"].contains(selected) else { return }
+            interfaceLanguage = selected
+            retryButton.setTitle(nativeText("Tekrar dene"), for: .normal)
+            launchLogo?.accessibilityLabel = nativeText("Hesap yükleniyor")
+            if !loadErrorText.isEmpty { loadErrorLabel.text = nativeText(loadErrorText) }
         case "ready":
             revealContent()
         case "requestPermission":
@@ -216,7 +244,8 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             do {
                 let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                let filename = "Hesap-yedek-\(ISO8601DateFormatter().string(from: Date()).prefix(10)).json"
+                let prefix = interfaceLanguage == "en" ? "Hesap-backup" : "Hesap-yedek"
+                let filename = "\(prefix)-\(ISO8601DateFormatter().string(from: Date()).prefix(10)).json"
                 let file = directory.appendingPathComponent(filename)
                 try Data(content.utf8).write(to: file, options: .atomic)
                 exportedURL = file
@@ -240,29 +269,50 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         scheduleRevision += 1
         let revision = scheduleRevision
         let center = UNUserNotificationCenter.current()
-        center.getPendingNotificationRequests { requests in
-            DispatchQueue.main.async {
-                guard revision == self.scheduleRevision else { return }
-                center.removePendingNotificationRequests(withIdentifiers: requests.map(\.identifier).filter { $0.hasPrefix(self.notificationPrefix) })
-                guard enabled else { return }
-                // The HTML sends the next 60 reminders, leaving headroom under iOS's 64-request limit.
-                for entry in entries.prefix(60) {
-                    guard let id = entry["id"] as? String, let date = entry["date"] as? String,
-                          let hour = entry["hour"] as? Int, let minute = entry["minute"] as? Int,
-                          let text = entry["body"] as? String else { continue }
-                    let parts = date.split(separator: "-").compactMap { Int($0) }
-                    guard parts.count == 3 else { continue }
-                    var components = DateComponents()
-                    components.year = parts[0]; components.month = parts[1]; components.day = parts[2]
-                    components.hour = hour; components.minute = minute
-                    // No fixed time zone: these are local wall-clock reminders.
-                    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                    let content = UNMutableNotificationContent()
-                    content.title = "Hesap"
-                    content.body = text
-                    content.sound = .default
-                    center.add(UNNotificationRequest(identifier: self.notificationPrefix + id, content: content, trigger: trigger)) { error in
-                        if error != nil { DispatchQueue.main.async { self.deliver(["type": "error", "message": "Bir hatırlatma zamanlanamadı."]) } }
+        center.getNotificationSettings { settings in
+            center.getPendingNotificationRequests { requests in
+                DispatchQueue.main.async {
+                    guard revision == self.scheduleRevision else { return }
+                    let oldIDs = requests.map(\.identifier).filter {
+                        $0.hasPrefix(self.notificationPrefix)
+                    }
+                    center.removePendingNotificationRequests(withIdentifiers: oldIDs)
+                    // OS permission controls system alerts only; the in-app inbox is always available.
+                    let permitted = settings.authorizationStatus == .authorized
+                        || settings.authorizationStatus == .provisional
+                        || settings.authorizationStatus == .ephemeral
+                    guard enabled && permitted else { return }
+                    for entry in entries.prefix(60) {
+                        guard let id = entry["id"] as? String,
+                              let date = entry["date"] as? String,
+                              let hour = entry["hour"] as? Int,
+                              let minute = entry["minute"] as? Int,
+                              let text = entry["body"] as? String else { continue }
+                        let parts = date.split(separator: "-").compactMap { Int($0) }
+                        guard parts.count == 3 else { continue }
+                        var components = DateComponents()
+                        components.year = parts[0]
+                        components.month = parts[1]
+                        components.day = parts[2]
+                        components.hour = hour
+                        components.minute = minute
+                        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                        let content = UNMutableNotificationContent()
+                        content.title = "Hesap"
+                        content.body = text
+                        content.sound = .default
+                        let request = UNNotificationRequest(
+                            identifier: self.notificationPrefix + id,
+                            content: content,
+                            trigger: trigger
+                        )
+                        center.add(request) { error in
+                            if error != nil {
+                                DispatchQueue.main.async {
+                                    self.deliver(["type": "error", "message": "Bir hatırlatma zamanlanamadı."])
+                                }
+                            }
+                        }
                     }
                 }
             }
