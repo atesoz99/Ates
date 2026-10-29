@@ -3,6 +3,7 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 import UserNotifications
+import WidgetKit
 
 // iOS 15 ve üzeri. HTML dosyası: finans-ilk-prototip.html
 struct ContentView: View {
@@ -274,7 +275,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
     }
 
     @objc private func refresh() {
-        webView.evaluateJavaScript("window.Hesap?.refreshNotifications(undefined, true)", completionHandler: nil)
+        webView.evaluateJavaScript("window.Hesap?.refreshSpendingTarget?.(); window.Hesap?.refreshNotifications(undefined, true)", completionHandler: nil)
     }
 
     func userContentController(_ userContentController: WKUserContentController,
@@ -291,6 +292,12 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             retryButton.setTitle(nativeText("Tekrar dene"), for: .normal)
             launchLogo?.accessibilityLabel = nativeText("Hesap yükleniyor")
             if !loadErrorText.isEmpty { loadErrorLabel.text = nativeText(loadErrorText) }
+        case "widgetSnapshot":
+            guard let goal = body["dailyGoal"] as? NSNumber,
+                  let language = body["language"] as? String else { return }
+            if HesapWidgetStore.save(dailyGoal: goal.doubleValue, language: language) {
+                WidgetCenter.shared.reloadTimelines(ofKind: HesapWidgetStore.kind)
+            }
         case "pickDate":
             presentDatePicker(body)
         case "ready":
@@ -470,5 +477,31 @@ final class HesapDatePickerController: UIViewController {
     @objc private func confirm() {
         selected(picker.date)
         dismiss(animated: true)
+    }
+}
+
+// App-side writer for the small snapshot consumed by the widget extension.
+private enum HesapWidgetStore {
+    static let kind = "HesapSpendingWidget"
+    private static let appGroupIdentifier = "group.com.ates.hesap"
+    private static let snapshotKey = "hesap.spendingWidget.v1"
+
+    static func save(dailyGoal: Double, language: String) -> Bool {
+        guard dailyGoal.isFinite, dailyGoal >= 0, dailyGoal <= 1e15,
+              ["tr", "en"].contains(language),
+              FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) != nil,
+              let defaults = UserDefaults(suiteName: appGroupIdentifier) else { return false }
+        if let bytes = defaults.data(forKey: snapshotKey),
+           let old = (try? JSONSerialization.jsonObject(with: bytes)) as? [String: Any],
+           let oldGoal = old["dailyGoal"] as? NSNumber,
+           oldGoal.doubleValue == dailyGoal, old["language"] as? String == language { return false }
+        // JSONDecoder's default Date representation is seconds since 1 January 2001.
+        let payload: [String: Any] = [
+            "dailyGoal": dailyGoal, "language": language,
+            "updatedAt": Date().timeIntervalSinceReferenceDate
+        ]
+        guard let bytes = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+        defaults.set(bytes, forKey: snapshotKey)
+        return true
     }
 }
