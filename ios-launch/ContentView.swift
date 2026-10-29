@@ -18,7 +18,7 @@ struct HesapWebView: UIViewControllerRepresentable {
 }
 
 final class HesapViewController: UIViewController, WKScriptMessageHandler,
-    WKNavigationDelegate, UIDocumentPickerDelegate, UNUserNotificationCenterDelegate, UIScrollViewDelegate {
+    WKNavigationDelegate, UIDocumentPickerDelegate, UNUserNotificationCenterDelegate, UIScrollViewDelegate, UIPopoverPresentationControllerDelegate {
     private var webView: WKWebView!
     private let loadingCover = UIView()
     private let loadErrorLabel = UILabel()
@@ -38,6 +38,9 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         configuration.websiteDataStore = .default()
         configuration.ignoresViewportScaleLimits = false
         configuration.userContentController.add(self, name: "hesap")
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: "window.HesapNativeDatePicker = true;",
+            injectionTime: .atDocumentStart, forMainFrameOnly: true))
         // Wait for the HTML's initial layout and paint; do not wait for exchange-rate requests.
         let readyScript = WKUserScript(
             source: """
@@ -212,6 +215,60 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             "window.dispatchEvent(new CustomEvent('hesap-native', { detail: payload }));",
             arguments: ["payload": translatedPayload], in: nil, in: .page, completionHandler: nil)
     }
+    private func presentDatePicker(_ body: [String: Any]) {
+        guard presentedViewController == nil,
+              let field = body["field"] as? String,
+              ["trade-date", "term-start", "term-end"].contains(field) else { return }
+        let english = (body["language"] as? String ?? interfaceLanguage) == "en"
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let today = calendar.startOfDay(for: Date())
+        let minimum = field == "term-end"
+            ? calendar.date(byAdding: .day, value: 1, to: today) ?? today
+            : calendar.date(from: DateComponents(year: 1900, month: 1, day: 1)) ?? .distantPast
+        let maximum = field == "term-end"
+            ? calendar.date(from: DateComponents(year: 2100, month: 12, day: 31)) ?? .distantFuture
+            : today
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = calendar
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.isLenient = false
+        let initial = (body["value"] as? String).flatMap { formatter.date(from: $0) } ?? (field == "term-end" ? minimum : today)
+        let picker = HesapDatePickerController(
+            english: english, date: min(max(initial, minimum), maximum),
+            minimum: minimum, maximum: maximum
+        ) { [weak self] selected in
+            guard selected >= minimum, selected <= maximum else { return }
+            self?.deliver(["type": "dateSelected", "field": field, "value": formatter.string(from: selected)])
+        }
+        let navigation = UINavigationController(rootViewController: picker)
+        navigation.overrideUserInterfaceStyle = body["dark"] as? Bool == true ? .dark : .light
+        navigation.modalPresentationStyle = .popover
+        navigation.preferredContentSize = CGSize(width: min(360, max(280, webView.bounds.width - 32)), height: 440)
+        if let popover = navigation.popoverPresentationController {
+            popover.delegate = self
+            popover.sourceView = webView
+            let rect = body["rect"] as? [String: Any] ?? [:]
+            let rawX = (rect["x"] as? NSNumber)?.doubleValue ?? 16
+            let rawY = (rect["y"] as? NSNumber)?.doubleValue ?? Double(webView.bounds.midY)
+            let rawWidth = (rect["width"] as? NSNumber)?.doubleValue ?? Double(webView.bounds.width - 32)
+            let rawHeight = (rect["height"] as? NSNumber)?.doubleValue ?? 48
+            let x = rawX.isFinite ? min(max(CGFloat(rawX), 0), webView.bounds.maxX - 1) : 0
+            let y = rawY.isFinite ? min(max(CGFloat(rawY), 0), webView.bounds.maxY - 1) : 0
+            let width = rawWidth.isFinite ? min(max(CGFloat(rawWidth), 1), webView.bounds.width - x) : 1
+            let height = rawHeight.isFinite ? min(max(CGFloat(rawHeight), 1), webView.bounds.height - y) : 1
+            popover.sourceRect = CGRect(x: x, y: y, width: width, height: height)
+            popover.permittedArrowDirections = [.up, .down]
+        }
+        present(navigation, animated: true)
+    }
+
+    func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle {
+        .none
+    }
+
     @objc private func refresh() {
         webView.evaluateJavaScript("window.Hesap?.refreshNotifications(undefined, true)", completionHandler: nil)
     }
@@ -230,6 +287,8 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             retryButton.setTitle(nativeText("Tekrar dene"), for: .normal)
             launchLogo?.accessibilityLabel = nativeText("Hesap yükleniyor")
             if !loadErrorText.isEmpty { loadErrorLabel.text = nativeText(loadErrorText) }
+        case "pickDate":
+            presentDatePicker(body)
         case "ready":
             revealContent()
         case "requestPermission":
@@ -353,5 +412,64 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         DispatchQueue.main.async { self.refresh(); self.webView.evaluateJavaScript("document.getElementById('notifications-open')?.click()", completionHandler: nil) }
         completionHandler()
+    }
+}
+
+// Apple's calendar control, with the app's locale and no clear/reset action.
+final class HesapDatePickerController: UIViewController {
+    private let picker = UIDatePicker()
+    private let english: Bool
+    private let selected: (Date) -> Void
+
+    init(english: Bool, date: Date, minimum: Date, maximum: Date, selected: @escaping (Date) -> Void) {
+        self.english = english
+        self.selected = selected
+        super.init(nibName: nil, bundle: nil)
+        picker.datePickerMode = .date
+        picker.preferredDatePickerStyle = .inline
+        picker.locale = Locale(identifier: english ? "en_GB" : "tr_TR")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = picker.locale
+        calendar.firstWeekday = 2
+        calendar.timeZone = .current
+        picker.calendar = calendar
+        picker.timeZone = .current
+        picker.minimumDate = minimum
+        picker.maximumDate = maximum
+        picker.setDate(date, animated: false)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        title = english ? "Date" : "Tarih"
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: english ? "Cancel" : "Vazgeç", style: .plain, target: self, action: #selector(cancel))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            title: english ? "Done" : "Tamam", style: .done, target: self, action: #selector(confirm))
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        picker.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scroll)
+        scroll.addSubview(picker)
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            picker.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 8),
+            picker.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 8),
+            picker.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -8),
+            picker.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -8),
+            picker.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -16)
+        ])
+    }
+
+    @objc private func cancel() { dismiss(animated: true) }
+    @objc private func confirm() {
+        selected(picker.date)
+        dismiss(animated: true)
     }
 }

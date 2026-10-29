@@ -13,13 +13,17 @@ with sync_playwright() as p:
   elif '/spot/latest' in r.request.url:r.fulfill(json={'metals':{'gold':{'units':{'troyOunce':2500}},'silver':{'units':{'troyOunce':30}}}})
   else:r.fulfill(json={'data':[{'date':'2026-10-01','average':2000}]})
  page.route('https://**/*',network);page.route('http://localhost/**',lambda r:r.fulfill(body=source,content_type='text/html'))
+ page.add_init_script('window.HesapNativeDatePicker=true;window.nativeMessages=[];window.webkit={messageHandlers:{hesap:{postMessage:m=>nativeMessages.push(m)}}};')
  page.goto('http://localhost/');page.wait_for_timeout(200)
  page.locator('#account-open').click();assert page.locator('[data-asset-visibility]').count()==8
  assert page.locator('[data-asset-visibility]:checked').count()==8
  assert page.locator('#account-overlay input[type=checkbox]:checked:not([data-asset-visibility])').count()==0
  assert 'Verilerini yedekle.' in page.locator('#backup-export').inner_text()
- assert page.locator('#backup-export span').inner_text()=='↗\ufe0e'
- assert page.locator('#backup-import span').inner_text()=='↙\ufe0e'
+ assert page.locator('.backup-actions>p').inner_text()=='Geri yükleme, mevcut kayıtların yerini alır.'
+ assert page.locator('.backup-actions>p').evaluate('e=>getComputedStyle(e).marginTop')=='6px'
+ assert page.locator('#backup-export svg').evaluate('e=>getComputedStyle(e).width')==page.locator('#account-contact').evaluate('e=>getComputedStyle(e).fontSize')
+ assert page.locator('#backup-export .backup-direction path').get_attribute('d')=='M4 12 12 4 M4 4h8v8'
+ assert page.locator('#backup-import .backup-direction path').get_attribute('d')=='M12 4 4 12 M4 4v8h8'
  page.locator('#account-close').click()
  page.evaluate('(d)=>localStorage.setItem("finansim-prototype-v1",JSON.stringify(d))',fixture);page.reload();page.wait_for_timeout(250);page.locator('[data-tab=trade]').click();page.wait_for_timeout(200)
  assert page.locator('#trade-count').inner_text()=='3 İşlem. 2026'
@@ -33,12 +37,15 @@ with sync_playwright() as p:
  assert page.locator('#trade-month option').count()==13
  page.select_option('#trade-month','all');assert page.locator('#trade-count').inner_text()=='1 İşlem. 2025'
  page.select_option('#trade-year','2026');page.wait_for_timeout(100)
- page.locator('#trade-date-picker').click();dialog=page.locator('#date-dialog');assert dialog.is_visible()
- assert 'Pzt' in dialog.inner_text() and 'Per' in dialog.inner_text()
- assert 'Reset' not in dialog.inner_text() and 'Sıfırla' not in dialog.inner_text()
- assert dialog.locator('[data-date="2026-10-30"]').is_disabled()
- assert dialog.locator('[data-date="2026-10-29"]').is_enabled()
- dialog.locator('[data-date="2026-10-28"]').click();page.wait_for_timeout(150)
+ page.locator('#trade-date-picker').click()
+ assert page.locator('#date-dialog').count()==0
+ message=page.evaluate('nativeMessages.filter(m=>m.action==="pickDate").at(-1)')
+ assert message['field']=='trade-date' and message['language']=='tr'
+ assert page.locator('#trade-date').get_attribute('max')=='2026-10-29'
+ page.evaluate("window.dispatchEvent(new CustomEvent('hesap-native',{detail:{type:'dateSelected',field:'trade-date',value:'2026-10-30'}}))")
+ assert page.locator('#trade-date').input_value()=='2026-10-29'
+ page.evaluate("window.dispatchEvent(new CustomEvent('hesap-native',{detail:{type:'dateSelected',field:'trade-date',value:'2026-10-28'}}))")
+ page.wait_for_timeout(150)
  assert page.locator('#trade-date').input_value()=='2026-10-28'
  assert '28.10.2026'==page.locator('#trade-date-picker').inner_text()
  page.locator('#quantity').fill('60000,0001');page.locator('#quantity').blur()
@@ -62,16 +69,16 @@ with sync_playwright() as p:
  assert 'Holdings:' in page.locator('#trade-summary').inner_text() or 'Held:' in page.locator('#trade-summary').inner_text()
  assert 'Average purchase cost:' in page.locator('#trade-summary').inner_text()
  assert 'Alış:' not in page.locator('#trade-summary').inner_text()
- page.locator('#trade-date-picker').click();assert 'Mon' in dialog.inner_text() and 'Thu' in dialog.inner_text()
- assert 'October' in dialog.locator('select').first.inner_text()
- dialog.locator('.date-dialog-close').click()
+ page.locator('#trade-date-picker').click()
+ assert page.evaluate('nativeMessages.filter(m=>m.action==="pickDate").at(-1).language')=='en'
  page.locator('[data-tab=term]').click();page.locator('#term-end-picker').click()
- assert dialog.locator('[data-date="2026-10-29"]').is_disabled()
- dialog.locator('select').first.select_option('10');dialog.locator('[data-date="2026-11-01"]').click()
+ assert page.evaluate('nativeMessages.filter(m=>m.action==="pickDate").at(-1).field')=='term-end'
+ assert page.locator('#term-end').get_attribute('min')=='2026-10-30'
+ page.evaluate("window.dispatchEvent(new CustomEvent('hesap-native',{detail:{type:'dateSelected',field:'term-end',value:'2026-11-01'}}))")
  assert page.locator('#term-end').input_value()=='2026-11-01'
  # Existing preferences survive relaunch; defaults only apply to first launch.
  page.locator('#account-open').click();page.locator('[data-asset-visibility="Euro"]').uncheck();page.locator('#dark-theme-toggle').check();page.reload();page.wait_for_timeout(150);page.locator('#account-open').click()
  assert not page.locator('[data-asset-visibility="Euro"]').is_checked()
  assert page.locator('#dark-theme-toggle').is_checked()
  assert not errors,errors
- browser.close();print('PASS: initial preferences, backup arrows, month/year summary and list filtering, date ordering, bilingual reset-free calendar, future-date rejection, maturity future dates, grouped fractional quantity save, labels, hint spacing, sale spacing and preserved preferences.')
+ browser.close();print('PASS: initial preferences, backup arrows, month/year summary and list filtering, date ordering, native date-picker language bridge, future-date rejection, maturity future dates, grouped fractional quantity save, labels, hint spacing, sale spacing and preserved preferences.')
