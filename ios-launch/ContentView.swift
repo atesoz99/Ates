@@ -103,7 +103,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         loadingCover.addSubview(logo)
 
         loadErrorLabel.textColor = .white
-        loadErrorLabel.font = .preferredFont(forTextStyle: .body)
+        loadErrorLabel.font = UIFont(name: "Arial", size: 17)
         loadErrorLabel.numberOfLines = 0
         loadErrorLabel.textAlignment = .center
         loadErrorLabel.isHidden = true
@@ -112,7 +112,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
 
         retryButton.setTitle(nativeText("Tekrar dene"), for: .normal)
         retryButton.setTitleColor(.white, for: .normal)
-        retryButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+        retryButton.titleLabel?.font = UIFont(name: "Arial-BoldMT", size: 17)
         retryButton.isHidden = true
         retryButton.translatesAutoresizingMaskIntoConstraints = false
         retryButton.addTarget(self, action: #selector(loadPrototype), for: .touchUpInside)
