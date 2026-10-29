@@ -245,6 +245,15 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         }
         let navigation = UINavigationController(rootViewController: picker)
         navigation.overrideUserInterfaceStyle = body["dark"] as? Bool == true ? .dark : .light
+        let calendarBackground = UIColor { traits in
+            traits.userInterfaceStyle == .dark ? .black : .systemBackground
+        }
+        navigation.view.backgroundColor = calendarBackground
+        let barAppearance = UINavigationBarAppearance()
+        barAppearance.configureWithOpaqueBackground()
+        barAppearance.backgroundColor = calendarBackground
+        navigation.navigationBar.standardAppearance = barAppearance
+        navigation.navigationBar.scrollEdgeAppearance = barAppearance
         // Give the entire system calendar enough room instead of clipping it inside a popover.
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
@@ -438,7 +447,10 @@ final class HesapDatePickerController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark ? .black : .systemBackground
+        }
+        picker.backgroundColor = .clear
         title = english ? "Date" : "Tarih"
         navigationItem.leftBarButtonItem = UIBarButtonItem(
             title: english ? "Cancel" : "Vazgeç", style: .plain, target: self, action: #selector(cancel))
