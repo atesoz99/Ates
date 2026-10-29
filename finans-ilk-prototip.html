@@ -689,10 +689,10 @@ html[lang="en-GB"] .account-toggle span{padding-right:12px}
   <main>
     <section class="screen active" id="home" data-title="Finansal özet">
       <div class="heading"><p id="today-line"></p></div>
-      <section class="hero"><div class="hero-label">Son Kaydedilen Ana Paran</div><div class="hero-amount" id="home-capital">₺ 0</div><div class="hero-foot" id="home-capital-usd">USD karşılığı —</div><button type="button" class="text-button" id="capital-period" data-go="trade" data-target="trade-form-heading">Henüz Aylık Kayıt Eklemedin</button></section>
+      <section class="hero"><div class="hero-label">Son Kaydedilen Ana Paran</div><div class="hero-amount" id="home-capital">₺ 0</div><div class="hero-foot" id="home-capital-usd">USD karşılığı —</div><button type="button" class="text-button" id="capital-period" data-go="track" data-target="capital-form-heading">Henüz Aylık Kayıt Eklemedin</button></section>
       <section class="target"><div class="target-top"><h2>Bugüne Kadarki Harcama Hedefi</h2><span class="small" id="day-label"></span></div><div class="target-amount" id="daily-target">₺ 0</div><div class="small">Ayın bugününe kadar geçmemen gereken toplam.</div><form id="daily-goal-form"><div class="form-grid"><div class="field"><label for="daily-goal-home" class="daily-goal-label"><span>Günlük harcama hedefi</span> <span>(₺)</span></label><input id="daily-goal-home" type="text" inputmode="numeric" class="money-entry" placeholder="0" autocomplete="off"></div><div class="field" style="align-content:end"><button class="secondary" type="submit">Hedefi kaydet</button></div></div></form></section>
       <section class="section"><div class="section-head"><h2 class="section-title" id="month-title">Son Kayıt</h2><button class="text-button" data-go="track" data-target="capital-form-heading">Aylık Kaydı Güncelle</button></div><div class="summary-grid"><div class="summary"><div class="label">Gelir</div><div class="value" id="home-income">₺ 0</div><div class="hint">Aylık Toplam</div></div><div class="summary"><div class="label">Gider</div><div class="value" id="home-expense">₺ 0</div><div class="hint">Aylık Toplam</div></div><div class="summary"><div class="label">Gelir - Gider</div><div class="value" id="home-saved">₺ 0</div></div><div class="summary"><div class="label">Tasarruf Oranı</div><div class="value" id="home-rate">%0</div></div></div><div class="summary home-expense-change-card" style="margin-top:10px"><div id="home-expense-change-label">Önceki aya göre gider değişimi:</div><strong id="home-expense-change" class="home-expense-change-value">—</strong></div></section>
-      <section class="section"><div class="section-head"><h2 class="section-title">Yatırımlarım</h2><button class="text-button" data-go="trade">İşlemleri Gör →</button></div><div class="trade-summary home-trade-summary" id="home-trade-summary"></div></section>
+      <section class="section"><div class="section-head"><h2 class="section-title">Yatırımlarım</h2><button class="text-button" data-go="trade" data-target="trade-form-heading">İşlem Ekle</button></div><div class="trade-summary home-trade-summary" id="home-trade-summary"></div></section>
       <section class="section"><div class="summary"><div class="label" id="home-year-saving-label" style="font-size:15px;font-weight:650;color:var(--ink)">2026 Toplam Birikimim</div><div class="value" id="home-year-saving">₺ 0</div><div class="hint" id="home-year-saving-note">Gelir − Gider</div></div></section>
 
       <section class="section"><div class="section-head"><h2 class="section-title">Yaklaşan Ödemeler</h2><button class="text-button" data-go="more" data-target="payments-monthly-total">Tümünü Gör →</button></div><div class="panel" id="upcoming-list"><div class="empty">Henüz düzenli ödeme eklemedin.</div></div></section>
@@ -1017,7 +1017,7 @@ function heldUsdEquivalent(asset,quantity){const currency={Euro:'EUR',Pound:'GBP
   "İşlem Yılı": "Trading year",
   "İşlemi kaydet": "Save transaction",
   "İşlemi Kaydet": "Save transaction",
-  "İşlemleri Gör": "View transactions",
+  "İşlem Ekle": "Add a trade",
   "Alış Birim Fiyatı (₺)": "Purchase price per unit (₺)",
   "Değişiklikleri Kaydet": "Save changes",
   "Değişiklikleri kaydet": "Save changes",
