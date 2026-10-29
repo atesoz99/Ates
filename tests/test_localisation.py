@@ -70,7 +70,7 @@ with sync_playwright() as p:
   text=page.locator('#trade-form').inner_text()
   assert not re.search('[çğıİöşüÇĞÖŞÜ]',text),(asset,text)
  # Date notes after data arrives.
- page.locator('[data-tab=term]').click();page.locator('#term-start').fill('2026-10-01');page.wait_for_timeout(150)
+ page.locator('[data-tab=term]').click();page.locator('#term-start').evaluate("(e)=>{e.value='2026-10-01';e.dispatchEvent(new Event('change',{bubbles:true}))}");page.wait_for_timeout(150)
  assert 'Daily reference rate' in page.locator('#term-start-fx-note').inner_text()
  # Future OS notifications use the chosen language without depending on the legacy disabled preference.
  schedules=page.evaluate('Hesap.notificationSchedule("2026-10-28T12:00:00")')

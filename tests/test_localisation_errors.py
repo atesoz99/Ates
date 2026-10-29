@@ -23,7 +23,7 @@ with sync_playwright() as p:
  assert page.locator('#toast').inner_text()=='The Eurobond amount cannot exceed your available USD cash.'
  page.select_option('#asset','Dolar');page.locator('#average-income-toggle').check();assert page.locator('#unit-price').evaluate('(e)=>e.readOnly')
  assert 'no existing holdings' in page.locator('#trade-price-note').inner_text()
- page.locator('[data-tab=term]').click();page.locator('#term-start').fill('2026-10-01');page.wait_for_timeout(150)
+ page.locator('[data-tab=term]').click();page.locator('#term-start').evaluate("(e)=>{e.value='2026-10-01';e.dispatchEvent(new Event('change',{bubbles:true}))}");page.wait_for_timeout(150)
  assert 'could not be retrieved' in page.locator('#term-start-fx-note').inner_text()
  page.locator('#account-open').click();before=page.evaluate('localStorage.getItem("finansim-prototype-v1")')
  page.locator('#backup-file').set_input_files({'name':'invalid.json','mimeType':'application/json','buffer':b'{bad json'})

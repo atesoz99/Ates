@@ -48,11 +48,11 @@ with sync_playwright() as p:
   assert page.locator('#capital-year').input_value()=='2026'
   assert page.locator('#capital-month').input_value()=='10'
   assert page.locator('#capital-amount').input_value()=='1.200.000'
- page.locator('[data-tab=term]').click();page.locator('#term-start').fill('2026-10-29');page.wait_for_timeout(300)
+ page.locator('[data-tab=term]').click();page.locator('#term-start').evaluate("(e)=>{e.value='2026-10-29';e.dispatchEvent(new Event('change',{bubbles:true}))}");page.wait_for_timeout(300)
  assert page.locator('#start-fx').input_value()=='40,12'
  assert '40,12' in page.locator('#rate-status').inner_text()
  page.locator('[data-tab=trade]').click();page.wait_for_timeout(300)
- page.select_option('#asset','Dolar');page.locator('#trade-date').fill('2026-10-29');page.wait_for_timeout(300)
+ page.select_option('#asset','Dolar');page.locator('#trade-date').evaluate("(e)=>{e.value='2026-10-29';e.dispatchEvent(new Event('change',{bubbles:true}))}");page.wait_for_timeout(300)
  assert page.locator('#unit-price').input_value()=='40,12',page.locator('#unit-price').input_value()
  page.locator('#account-open').click();page.select_option('#language-select','en');page.locator('#account-close').click()
  page.locator('[data-tab=track]').click();page.select_option('#tracking-year','2025');page.wait_for_timeout(200)
