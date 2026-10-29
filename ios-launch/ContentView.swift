@@ -248,7 +248,17 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         // Give the entire system calendar enough room instead of clipping it inside a popover.
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]
+            if #available(iOS 16.0, *) {
+                let calendarHeight = UISheetPresentationController.Detent.custom(
+                    identifier: .init("hesapCalendar")
+                ) { context in
+                    min(500, context.maximumDetentValue)
+                }
+                sheet.detents = [calendarHeight, .large()]
+                sheet.selectedDetentIdentifier = calendarHeight.identifier
+            } else {
+                sheet.detents = [.large()]
+            }
             sheet.prefersGrabberVisible = true
         }
         present(navigation, animated: true)

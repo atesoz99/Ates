@@ -24,7 +24,8 @@ with sync_playwright() as p:
     for entry in page.locator('.allocation-totals strong').all():assert entry.evaluate('e=>[getComputedStyle(e).fontSize,getComputedStyle(e).color,getComputedStyle(e).fontWeight]')==ref
     x=page.locator('.allocation-legend strong').first.bounding_box()['x']
     for row in page.locator('.allocation-total').all():
-     title=row.locator('strong');amount=row.locator('small')
+     title=row.locator('strong').first;amount=row.locator('small')
+     assert row.locator('.allocation-total-content').evaluate('e=>[...e.children].map(x=>x.tagName)')==['STRONG','SMALL','STRONG']
      assert abs(title.bounding_box()['x']-x)<1
      assert amount.evaluate('e=>[getComputedStyle(e).fontSize,getComputedStyle(e).color]')==page.locator('.allocation-legend small').first.evaluate('e=>[getComputedStyle(e).fontSize,getComputedStyle(e).color]')
      assert abs(title.bounding_box()['y']-amount.bounding_box()['y'])<5,(width,lang,row.inner_text())
