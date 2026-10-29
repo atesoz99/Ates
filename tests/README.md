@@ -9,6 +9,7 @@ python tests/test_localisation.py
 python tests/test_localisation_errors.py
 python tests/test_tracking_updates.py
 python tests/test_trade_refinements.py
+python tests/test_portfolio_layout.py
 ```
 
 Coverage includes Turkish/English switching, numeric input conversion, preservation of canonical asset identifiers and custom names, backed-up language preferences, old notification opt-out migration, notifications and bridge messages, empty states, error messages, and iPhone-width overflow checks. These browser checks do not compile Swift, inspect Apple’s calendar on a real iPhone, or test delivery of iOS system notifications.

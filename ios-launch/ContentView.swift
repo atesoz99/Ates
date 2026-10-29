@@ -18,7 +18,7 @@ struct HesapWebView: UIViewControllerRepresentable {
 }
 
 final class HesapViewController: UIViewController, WKScriptMessageHandler,
-    WKNavigationDelegate, UIDocumentPickerDelegate, UNUserNotificationCenterDelegate, UIScrollViewDelegate, UIPopoverPresentationControllerDelegate {
+    WKNavigationDelegate, UIDocumentPickerDelegate, UNUserNotificationCenterDelegate, UIScrollViewDelegate {
     private var webView: WKWebView!
     private let loadingCover = UIView()
     private let loadErrorLabel = UILabel()
@@ -245,28 +245,13 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         }
         let navigation = UINavigationController(rootViewController: picker)
         navigation.overrideUserInterfaceStyle = body["dark"] as? Bool == true ? .dark : .light
-        navigation.modalPresentationStyle = .popover
-        navigation.preferredContentSize = CGSize(width: min(360, max(280, webView.bounds.width - 32)), height: 440)
-        if let popover = navigation.popoverPresentationController {
-            popover.delegate = self
-            popover.sourceView = webView
-            let rect = body["rect"] as? [String: Any] ?? [:]
-            let rawX = (rect["x"] as? NSNumber)?.doubleValue ?? 16
-            let rawY = (rect["y"] as? NSNumber)?.doubleValue ?? Double(webView.bounds.midY)
-            let rawWidth = (rect["width"] as? NSNumber)?.doubleValue ?? Double(webView.bounds.width - 32)
-            let rawHeight = (rect["height"] as? NSNumber)?.doubleValue ?? 48
-            let x = rawX.isFinite ? min(max(CGFloat(rawX), 0), webView.bounds.maxX - 1) : 0
-            let y = rawY.isFinite ? min(max(CGFloat(rawY), 0), webView.bounds.maxY - 1) : 0
-            let width = rawWidth.isFinite ? min(max(CGFloat(rawWidth), 1), webView.bounds.width - x) : 1
-            let height = rawHeight.isFinite ? min(max(CGFloat(rawHeight), 1), webView.bounds.height - y) : 1
-            popover.sourceRect = CGRect(x: x, y: y, width: width, height: height)
-            popover.permittedArrowDirections = [.up, .down]
+        // Give the entire system calendar enough room instead of clipping it inside a popover.
+        navigation.modalPresentationStyle = .pageSheet
+        if let sheet = navigation.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.prefersGrabberVisible = true
         }
         present(navigation, animated: true)
-    }
-
-    func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle {
-        .none
     }
 
     @objc private func refresh() {
@@ -449,21 +434,13 @@ final class HesapDatePickerController: UIViewController {
             title: english ? "Cancel" : "Vazgeç", style: .plain, target: self, action: #selector(cancel))
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: english ? "Done" : "Tamam", style: .done, target: self, action: #selector(confirm))
-        let scroll = UIScrollView()
-        scroll.translatesAutoresizingMaskIntoConstraints = false
         picker.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scroll)
-        scroll.addSubview(picker)
+        view.addSubview(picker)
         NSLayoutConstraint.activate([
-            scroll.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scroll.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            picker.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 8),
-            picker.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 8),
-            picker.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -8),
-            picker.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -8),
-            picker.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -16)
+            picker.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            picker.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            picker.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            picker.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12)
         ])
     }
 
