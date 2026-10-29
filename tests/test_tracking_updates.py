@@ -30,7 +30,9 @@ with sync_playwright() as p:
   page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme)
   for id in ['capital-change-percent','capital-change-usd']:
    label=page.locator('#'+id+' .comparison-label')
-   assert label.evaluate('e=>getComputedStyle(e).color')==page.evaluate('getComputedStyle(document.body).color')
+   assert label.inner_text().endswith(':')
+   assert label.evaluate('e=>getComputedStyle(e).fontSize')==page.locator('#latest-capital-usd').evaluate('e=>getComputedStyle(e).fontSize')
+   assert label.evaluate('e=>getComputedStyle(e).color')==page.locator('#latest-capital-usd').evaluate('e=>getComputedStyle(e).color')
    assert label.evaluate('e=>getComputedStyle(e).color')!=page.locator('#'+id).evaluate('e=>getComputedStyle(e).color')
 
  page.select_option('#capital-year','2025');page.select_option('#capital-month','9')
