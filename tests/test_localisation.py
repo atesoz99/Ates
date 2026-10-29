@@ -33,7 +33,7 @@ with sync_playwright() as p:
  assert page.locator('#action option').all_text_contents()==['Buy','Sell']
  assert page.locator('#asset option').first.get_attribute('value')=='Dolar'
  assert page.evaluate('JSON.parse(localStorage.getItem("finansim-prototype-v1")).trades[0].asset')=='Dolar'
- assert page.locator('#language-select option').all_text_contents()==['Turkish','English']
+ assert page.locator('#language-select option').all_text_contents()==['Türkçe','English']
  assert page.evaluate('nativeMessages.filter(m=>m.action==="language").at(-1).language')=='en'
  # All original static labels translate, apart from symbols, numbers, brand and unchanged English currency names.
  class StaticCopy(HTMLParser):
