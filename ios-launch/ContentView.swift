@@ -246,7 +246,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         let navigation = UINavigationController(rootViewController: picker)
         navigation.overrideUserInterfaceStyle = body["dark"] as? Bool == true ? .dark : .light
         let calendarBackground = UIColor { traits in
-            traits.userInterfaceStyle == .dark ? .black : .systemBackground
+            traits.userInterfaceStyle == .dark ? UIColor(white: 0.055, alpha: 1) : .systemBackground
         }
         navigation.view.backgroundColor = calendarBackground
         let barAppearance = UINavigationBarAppearance()
@@ -448,7 +448,7 @@ final class HesapDatePickerController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor { traits in
-            traits.userInterfaceStyle == .dark ? .black : .systemBackground
+            traits.userInterfaceStyle == .dark ? UIColor(white: 0.055, alpha: 1) : .systemBackground
         }
         picker.backgroundColor = .clear
         title = english ? "Date" : "Tarih"

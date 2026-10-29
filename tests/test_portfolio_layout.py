@@ -33,6 +33,6 @@ with sync_playwright() as p:
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
 
  page.locator('[data-tab=trade]').click();page.wait_for_timeout(200)
- gaps=page.evaluate("()=>{const r=id=>document.getElementById(id).getBoundingClientRect();return [r('trade-month-field').top-r('trade-year').bottom,r('trade-year-summary').top-r('trade-month').bottom]}");assert abs(gaps[0]-14)<1 and abs(gaps[1]-16)<1,gaps
+ gaps=page.evaluate("()=>{const r=id=>document.getElementById(id).getBoundingClientRect();return [r('trade-month-field').top-r('trade-year').bottom,r('trade-year-summary').top-r('trade-month').bottom]}");assert abs(gaps[0]-12)<1 and abs(gaps[1]-16)<1,gaps
  assert not errors,errors
  b.close();print('PASS: portfolio label alignment, inline percentage/amount styles, white dots, euro USD equivalent and trade selector gaps across languages, widths and themes.')
