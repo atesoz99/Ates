@@ -333,6 +333,7 @@
     /* Vade ekranında kur farkı yüzdesini büyüt ve sola al */
     .term-fx-change { display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 9px !important; }
     .term-fx-change-value { font-size: 16px !important; margin-right: 0 !important; text-align: center !important; justify-self: stretch !important; transform: translateX(-12px) !important; }
+html.keyboard-open .tabs{visibility:hidden;pointer-events:none}
 </style>
 <style>
 /* Genel okunabilirlik: küçük yardımcı metinleri büyüt */
@@ -725,6 +726,15 @@ html[lang="en-GB"] .account-toggle span{padding-right:12px}
 </div>
 <script>
 (()=>{
+  // Keep the tab bar out of the keyboard's visible area in iPhone WKWebView.
+  const keyboardViewport=window.visualViewport;
+  const keyboardField=el=>el instanceof HTMLTextAreaElement||el instanceof HTMLInputElement&&!el.disabled&&!el.readOnly&&!['button','submit','reset','checkbox','radio','file','hidden','date','month','time','range','color'].includes(el.type);
+  const setKeyboardOpen=open=>document.documentElement.classList.toggle('keyboard-open',open);
+  const syncKeyboard=()=>setKeyboardOpen(!!keyboardViewport&&window.innerHeight-keyboardViewport.height>120);
+  document.addEventListener('focusin',e=>{if(keyboardField(e.target))setKeyboardOpen(true)});
+  document.addEventListener('focusout',()=>setTimeout(()=>{if(!keyboardField(document.activeElement))syncKeyboard()},250));
+  keyboardViewport?.addEventListener('resize',syncKeyboard);
+  window.addEventListener('pageshow',syncKeyboard);
   const KEY='finansim-prototype-v1';
   const empty={capital:[],budgets:[],trades:[],terms:[],recurring:[],monthlyRates:{},dailyGoal:null,username:'',autoDeleteMaturedTerms:false,averageIncomeMode:false,notifications:{payments:true,goal:true},hiddenTradeAssets:[],otherTlInvestment:{amount:0,name:''},eurobond:{usd:0,eur:0},theme:'light',language:'tr'};
   let data,storageParseFailed=false;try{data={...empty,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{storageParseFailed=true;data={...empty}}data.notifications={...(data.notifications&&typeof data.notifications==='object'?data.notifications:{}),enabled:true};data.language=data.language==='en'?'en':'tr';if(!Array.isArray(data.hiddenTradeAssets))data.hiddenTradeAssets=[];if(!data.otherTlInvestment||typeof data.otherTlInvestment!=='object')data.otherTlInvestment={amount:0,name:''};if(!data.eurobond||typeof data.eurobond!=='object')data.eurobond={usd:0,eur:0};const dedupeMonth=(items,key)=>{const byMonth=new Map();for(const item of items||[])byMonth.set(String(item[key]||'').slice(0,7),item);return [...byMonth.values()]};data.capital=dedupeMonth(data.capital,'date');data.budgets=dedupeMonth(data.budgets,'month');if(data.dailyGoal==null){const prior=data.budgets.slice().sort((a,b)=>b.month.localeCompare(a.month))[0];data.dailyGoal=Number(prior?.daily)||0};if(!storageParseFailed){let repaired=false;const recoveryNow=new Date(),recoveryMonth=recoveryNow.getFullYear()+'-'+String(recoveryNow.getMonth()+1).padStart(2,'0');const validMonth=value=>/^\d{4}-(0[1-9]|1[0-2])$/.test(String(value||''));for(const item of data.capital){const month=String(item.date||'').slice(0,7);if(!validMonth(month)){item.date=recoveryMonth+'-01';repaired=true}}for(const item of data.budgets){if(!validMonth(item.month)){item.month=recoveryMonth;repaired=true}}if(repaired)localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY,JSON.stringify(data))}
