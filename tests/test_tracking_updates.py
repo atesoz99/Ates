@@ -16,11 +16,23 @@ with sync_playwright() as p:
  page.goto('http://localhost/');page.evaluate('(d)=>localStorage.setItem("finansim-prototype-v1",JSON.stringify(d))',fixture);page.reload();page.wait_for_timeout(300)
  page.locator('[data-tab=track]').click();page.select_option('#tracking-year','2025');page.wait_for_timeout(150)
  assert page.locator('#previous-month-comparison').is_hidden()
+ assert page.locator('#capital-year').input_value()=='2025'
+ assert page.locator('#capital-month').input_value()=='9'
+ assert page.locator('#capital-amount').input_value()=='1.000.000'
+ assert page.locator('#capital-change').evaluate('e=>getComputedStyle(e).fontSize')==page.locator('#capital-rate-status').evaluate('e=>getComputedStyle(e).fontSize')
  assert page.locator('#capital-change').inner_text()=='Karşılaştırılabilecek veri yok.'
  assert page.locator('#capital-change-percent').is_hidden()
  page.select_option('#tracking-year','2026');page.wait_for_timeout(150)
  assert page.locator('#previous-month-comparison').is_visible()
  assert page.locator('#capital-change-percent').is_visible()
+ assert page.locator('#capital-month').input_value()=='10'
+ for theme in ['dark','light']:
+  page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme)
+  for id in ['capital-change-percent','capital-change-usd']:
+   label=page.locator('#'+id+' .comparison-label')
+   assert label.evaluate('e=>getComputedStyle(e).color')==page.evaluate('getComputedStyle(document.body).color')
+   assert label.evaluate('e=>getComputedStyle(e).color')!=page.locator('#'+id).evaluate('e=>getComputedStyle(e).color')
+
  page.select_option('#capital-year','2025');page.select_option('#capital-month','9')
  assert page.locator('#capital-amount').input_value()=='1.000.000'
  page.locator('#capital-form .primary').click();page.wait_for_timeout(250)
