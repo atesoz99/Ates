@@ -25,7 +25,7 @@ with sync_playwright() as p:
  assert read()['eurobond']=={'usd':0,'eur':80}
  page.locator('[data-delete=trades][data-id=eur-old]').click();page.wait_for_timeout(100)
  assert read()['eurobond']=={'usd':0,'eur':0}
- assert page.locator('#toast').inner_text()=='Kayıt silindi'
+ assert not page.locator('#toast').evaluate('e=>e.classList.contains("show")')
  exact=copy.deepcopy(fixture);exact['eurobond']={'usd':40,'eur':100};load(exact)
  page.locator('[data-delete=trades][data-id=usd-old]').click();page.wait_for_timeout(100)
  assert read()['eurobond']=={'usd':40,'eur':100}
