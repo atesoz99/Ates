@@ -3,7 +3,6 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 import UserNotifications
-import WidgetKit
 
 // iOS 15 ve üzeri. HTML dosyası: finans-ilk-prototip.html
 struct ContentView: View {
@@ -30,6 +29,8 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
     private var contentRevealed = false
     private var exporting = false
     private var exportedURL: URL?
+    private var webReady = false
+    private var pendingNotificationID: String?
     private var scheduleRevision = 0
     private let notificationPrefix = "hesap."
 
@@ -138,6 +139,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
 
     @objc private func loadPrototype() {
         contentRevealed = false
+        webReady = false
         loadingCover.layer.removeAllAnimations()
         loadingCover.alpha = 1
         loadingCover.isHidden = false
@@ -275,7 +277,7 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
     }
 
     @objc private func refresh() {
-        webView.evaluateJavaScript("window.Hesap?.refreshSpendingTarget?.(); window.Hesap?.refreshNotifications(undefined, true)", completionHandler: nil)
+        webView.evaluateJavaScript("window.Hesap?.refreshRates?.(); window.Hesap?.refreshSpendingTarget?.(); window.Hesap?.refreshNotifications(undefined, true)", completionHandler: nil)
     }
 
     func userContentController(_ userContentController: WKUserContentController,
@@ -292,20 +294,16 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             retryButton.setTitle(nativeText("Tekrar dene"), for: .normal)
             launchLogo?.accessibilityLabel = nativeText("Hesap yükleniyor")
             if !loadErrorText.isEmpty { loadErrorLabel.text = nativeText(loadErrorText) }
-        case "widgetSnapshot":
-            guard let goal = body["dailyGoal"] as? NSNumber,
-                  let language = body["language"] as? String else { return }
-            if HesapWidgetStore.save(dailyGoal: goal.doubleValue, language: language) {
-                WidgetCenter.shared.reloadTimelines(ofKind: HesapWidgetStore.kind)
-            }
         case "pickDate":
             presentDatePicker(body)
         case "ready":
+            webReady = true
             revealContent()
+            requestNotificationPermission()
+            refresh()
+            openPendingNotification()
         case "requestPermission":
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-                DispatchQueue.main.async { self.deliver(["type": "permission", "granted": granted]); self.refresh() }
-            }
+            requestNotificationPermission()
         case "schedule":
             replaceSchedule(body["notifications"] as? [[String: Any]] ?? [], enabled: body["enabled"] as? Bool ?? true)
         case "export":
@@ -335,6 +333,31 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
         }
     }
 
+    private func requestNotificationPermission() {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            if settings.authorizationStatus == .notDetermined {
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    DispatchQueue.main.async {
+                        self.deliver(["type": "permission", "granted": granted])
+                        self.refresh()
+                    }
+                }
+            } else {
+                DispatchQueue.main.async { self.refresh() }
+            }
+        }
+    }
+
+    private func openPendingNotification() {
+        guard webReady, let id = pendingNotificationID,
+              let bytes = try? JSONSerialization.data(withJSONObject: [id]),
+              let json = String(data: bytes, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.Hesap?.openNotification?.(\(json)[0])") { _, error in
+            if error == nil && self.pendingNotificationID == id { self.pendingNotificationID = nil }
+        }
+    }
+
     private func replaceSchedule(_ entries: [[String: Any]], enabled: Bool) {
         scheduleRevision += 1
         let revision = scheduleRevision
@@ -343,8 +366,12 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
             center.getPendingNotificationRequests { requests in
                 DispatchQueue.main.async {
                     guard revision == self.scheduleRevision else { return }
+                    let desiredIDs = Set(entries.prefix(60).compactMap { entry -> String? in
+                        guard let id = entry["id"] as? String else { return nil }
+                        return self.notificationPrefix + id
+                    })
                     let oldIDs = requests.map(\.identifier).filter {
-                        $0.hasPrefix(self.notificationPrefix)
+                        $0.hasPrefix(self.notificationPrefix) && (!enabled || !desiredIDs.contains($0))
                     }
                     center.removePendingNotificationRequests(withIdentifiers: oldIDs)
                     // OS permission controls system alerts only; the in-app inbox is always available.
@@ -361,6 +388,8 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
                         let parts = date.split(separator: "-").compactMap { Int($0) }
                         guard parts.count == 3 else { continue }
                         var components = DateComponents()
+                        components.calendar = Calendar(identifier: .gregorian)
+                        components.timeZone = .current
                         components.year = parts[0]
                         components.month = parts[1]
                         components.day = parts[2]
@@ -371,11 +400,17 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
                         content.title = "Hesap"
                         content.body = text
                         content.sound = .default
+                        content.userInfo = ["hesapNotificationID": id]
                         let request = UNNotificationRequest(
                             identifier: self.notificationPrefix + id,
                             content: content,
                             trigger: trigger
                         )
+                        // Leave unchanged requests in place when the app resumes or refreshes.
+                        if let old = requests.first(where: { $0.identifier == request.identifier }),
+                           old.content.body == text,
+                           let oldTrigger = old.trigger as? UNCalendarNotificationTrigger,
+                           oldTrigger.dateComponents == components { continue }
                         center.add(request) { error in
                             if error != nil {
                                 DispatchQueue.main.async {
@@ -421,7 +456,14 @@ final class HesapViewController: UIViewController, WKScriptMessageHandler,
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
-        DispatchQueue.main.async { self.refresh(); self.webView.evaluateJavaScript("document.getElementById('notifications-open')?.click()", completionHandler: nil) }
+        let identifier = response.notification.request.identifier
+        let id = response.notification.request.content.userInfo["hesapNotificationID"] as? String
+            ?? String(identifier.dropFirst(identifier.hasPrefix(notificationPrefix) ? notificationPrefix.count : 0))
+        DispatchQueue.main.async {
+            self.pendingNotificationID = id
+            self.refresh()
+            self.openPendingNotification()
+        }
         completionHandler()
     }
 }
@@ -477,31 +519,5 @@ final class HesapDatePickerController: UIViewController {
     @objc private func confirm() {
         selected(picker.date)
         dismiss(animated: true)
-    }
-}
-
-// App-side writer for the small snapshot consumed by the widget extension.
-private enum HesapWidgetStore {
-    static let kind = "HesapSpendingWidget"
-    private static let appGroupIdentifier = "group.com.ates.hesap"
-    private static let snapshotKey = "hesap.spendingWidget.v1"
-
-    static func save(dailyGoal: Double, language: String) -> Bool {
-        guard dailyGoal.isFinite, dailyGoal >= 0, dailyGoal <= 1e15,
-              ["tr", "en"].contains(language),
-              FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier) != nil,
-              let defaults = UserDefaults(suiteName: appGroupIdentifier) else { return false }
-        if let bytes = defaults.data(forKey: snapshotKey),
-           let old = (try? JSONSerialization.jsonObject(with: bytes)) as? [String: Any],
-           let oldGoal = old["dailyGoal"] as? NSNumber,
-           oldGoal.doubleValue == dailyGoal, old["language"] as? String == language { return false }
-        // JSONDecoder's default Date representation is seconds since 1 January 2001.
-        let payload: [String: Any] = [
-            "dailyGoal": dailyGoal, "language": language,
-            "updatedAt": Date().timeIntervalSinceReferenceDate
-        ]
-        guard let bytes = try? JSONSerialization.data(withJSONObject: payload) else { return false }
-        defaults.set(bytes, forKey: snapshotKey)
-        return true
     }
 }
