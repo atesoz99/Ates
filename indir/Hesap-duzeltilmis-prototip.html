@@ -1435,6 +1435,14 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     updated.textContent=calendarText('Son Güncelleme: ','Last Updated: ')+fmtSlashDate(istanbulParts(new Date(state.updatedAt)).date);
   }
   function scheduleCapitalQuoteRetry(){clearTimeout(capitalQuoteTimer);capitalQuoteTimer=null;if(document.hidden||!data.currentCapitalQuote?.pending||resetInProgress)return;const delay=[5000,10000,20000,30000][Math.min(Math.max(0,capitalQuoteFailures-1),3)];capitalQuoteTimer=setTimeout(()=>loadCapitalQuote(),delay)}
+  function usableLiveCapitalMarket(market){
+    if(!market||market.stale||!Number.isFinite(market.at)||market.at>Date.now()+120000||Date.now()-market.at>15*60000||istanbulParts(new Date(market.at)).date!==istanbulParts().date)return null;
+    return ['Dolar','Euro','Pound','Gram altın','Gram gümüş'].every(a=>Number.isFinite(market.pairs[a]?.current)&&market.pairs[a].current>0)?market:null;
+  }
+  async function fetchLiveMarketPayload(url){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+    try{const response=await fetch(url,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('Quote unavailable');return await readMarketPayload(response)}catch(error){clearTimeout(timer);try{return await new Promise((resolve,reject)=>{const request=new XMLHttpRequest();request.open('GET',url+'&transport=xhr');request.timeout=12000;request.onload=()=>{if(request.status<200||request.status>=300){reject(Error('Quote unavailable'));return}readMarketPayload({text:async()=>request.responseText}).then(resolve,reject)};request.onerror=()=>reject(Error('Quote connection failed'));request.ontimeout=()=>reject(Error('Quote timed out'));request.send()})}catch{throw error}}finally{clearTimeout(timer)}
+  }
   async function loadCapitalQuote(){
     const state=data.currentCapitalQuote;if(!state?.pending||resetInProgress)return;clearTimeout(capitalQuoteTimer);capitalQuoteTimer=null;if(document.hidden)return;
     const generation=capitalQuoteGeneration;
@@ -1443,8 +1451,8 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     task.promise=(async()=>{
       try{
         // Refresh even when same-day rates are already displayed.
-        const response=await fetchWithDeadline('https://finans.truncgil.com/v4/today.json?capital='+Date.now(),{cache:'no-store'});if(!response.ok)throw Error('Quote unavailable');
-        const market=parseLiveDailyMarket(await readMarketPayload(response));if(!market||market.stale||istanbulParts(new Date(market.at)).date!==istanbulParts().date||usableCapitalRates(state)&&market.at<Number(state.marketAt))throw Error('Today quote required');
+        await loadLiveDailyMarket(true);
+        const market=usableLiveCapitalMarket(liveDailyMarket)||parseLiveDailyMarket(await fetchLiveMarketPayload('https://finans.truncgil.com/v4/today.json?capital='+Date.now()));if(!market||market.stale||istanbulParts(new Date(market.at)).date!==istanbulParts().date||usableCapitalRates(state)&&market.at<Number(state.marketAt))throw Error('Today quote required');
         const rates=Object.fromEntries(['Dolar','Euro','Pound','Gram altın','Gram gümüş'].map(a=>[a,market.pairs[a]?.current]));
         if(!Object.values(rates).every(v=>Number.isFinite(v)&&v>0))throw Error('Incomplete quote');
         if(resetInProgress||generation!==capitalQuoteGeneration||data.currentCapitalQuote!==state)return;
@@ -1458,16 +1466,30 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     capitalQuoteGeneration++;capitalQuoteFailures=0;clearTimeout(capitalQuoteTimer);data.currentCapitalQuote={amount,pending:true,recordedAt:Date.now()};save();renderCurrentCapital();document.activeElement?.blur();go('track');void loadCapitalQuote();
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadCapitalQuote()});
-  async function readMarketPayload(response){
-    const text=(await response.text()).trim();
-    try{return JSON.parse(text)}catch(error){
-      // The provider occasionally omits only the final root-object brace.
-      // Accept no repaired numbers, strings, partial fields, or other JSON errors.
-      if(!text.startsWith('{')||!text.endsWith('}'))throw error;
-      const payload=JSON.parse(text+'}');
-      if(!payload||typeof payload.Update_Date!=='string'||!payload.USD)throw error;
-      return payload;
+  function completeMarketFields(text){
+    // Recover only fully delimited top-level values. Never complete a string,
+    // number or nested record from a provider response cut off during transfer.
+    if(!text.startsWith('{'))return null;
+    const fields={},seen=new Set(),wanted=new Set(['Update_Date','USD','EUR','GBP','GRA','GUMUS']);let index=1;
+    while(index<text.length){
+      while(/\s/.test(text[index]||'')&&index<text.length)index++;
+      if(text[index]!== '"')break;
+      const keyStart=index++;let escaped=false,keyEnd=-1;
+      for(;index<text.length;index++){const c=text[index];if(escaped){escaped=false;continue}if(c==='\\'){escaped=true;continue}if(c==='"'){keyEnd=++index;break}}
+      if(keyEnd<0)break;const key=JSON.parse(text.slice(keyStart,keyEnd));if(seen.has(key))return null;seen.add(key);
+      while(/\s/.test(text[index]||'')&&index<text.length)index++;if(text[index++]!==':')break;
+      const start=index;let depth=0,quoted=false,escape=false,end=-1,delimiter='';
+      for(;index<text.length;index++){const c=text[index];if(quoted){if(escape)escape=false;else if(c==='\\')escape=true;else if(c==='"')quoted=false;continue}if(c==='"'){quoted=true;continue}if(c==='{'||c==='['){depth++;continue}if(c==='}'||c===']'){if(depth>0){depth--;continue}if(c==='}'){end=index;delimiter=c;break}return null}if(c===','&&depth===0){end=index;delimiter=c;break}}
+      if(end<0)break;let value;try{value=JSON.parse(text.slice(start,end))}catch{return null}if(wanted.has(key))fields[key]=value;
+      if(delimiter==='}')break;index++;
     }
+    return typeof fields.Update_Date==='string'&&['USD','EUR','GBP','GRA','GUMUS'].every(key=>fields[key]&&typeof fields[key]==='object'&&!Array.isArray(fields[key]))?fields:null;
+  }
+  async function readMarketPayload(response){
+    let text='';
+    if(response.body?.getReader){const reader=response.body.getReader(),decoder=new TextDecoder();let bytes=0;try{while(true){const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;if(bytes>1048576){await reader.cancel();throw Error('Market response too large')}text+=decoder.decode(chunk.value,{stream:true})}text+=decoder.decode()}catch(error){text+=decoder.decode();const complete=bytes<=1048576&&completeMarketFields(text.trim());if(complete)return complete;throw error}finally{reader.releaseLock()}}
+    else text=await response.text();text=text.trim();
+    try{return JSON.parse(text)}catch(error){const complete=completeMarketFields(text);if(complete)return complete;throw error}
   }
   function quoteFromMarket(asset,market=liveDailyMarket){
     const pair=market?.pairs[asset],usd=market?.pairs.Dolar;
@@ -1510,10 +1532,7 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     const showLoading=!liveDailyMarket;let changed=false;
     liveDailyAttempt=Date.now();if(showLoading)queueMicrotask(()=>render(true));
     liveDailyTask=(async()=>{try{
-      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);let response;
-      try{response=await fetchWithDeadline('https://finans.truncgil.com/v4/today.json?market='+Date.now(),{cache:'no-store',signal:controller.signal})}finally{clearTimeout(timer)}
-      if(!response.ok)throw Error('Daily market feed unavailable');
-      const payload=await readMarketPayload(response),parsed=parseLiveDailyMarket(payload);
+      const payload=await fetchLiveMarketPayload('https://finans.truncgil.com/v4/today.json?market='+Date.now()),parsed=parseLiveDailyMarket(payload);
       if(!parsed||liveDailyMarket&&parsed.at<liveDailyMarket.at)throw Error('Daily market feed is stale, invalid or older than the displayed batch');
       changed=!liveDailyMarket||parsed.at!==liveDailyMarket.at||parsed.date!==liveDailyMarket.date||JSON.stringify(parsed.pairs)!==JSON.stringify(liveDailyMarket.pairs);
       if(changed){liveDailyMarket=parsed;applyMarketQuotes(parsed);try{storeAppValue(KEY+'-daily-market-v1',JSON.stringify(payload))}catch{}}
