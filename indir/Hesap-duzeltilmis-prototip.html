@@ -1454,7 +1454,7 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
   }
   $('current-capital-form').addEventListener('submit',e=>{
     e.preventDefault();const amount=entryValue('current-capital-amount');if(!Number.isFinite(amount)||Math.abs(amount)>1e15||!$('current-capital-amount').value.trim())return;
-    capitalQuoteGeneration++;capitalQuoteFailures=0;clearTimeout(capitalQuoteTimer);data.currentCapitalQuote={amount,pending:true,recordedAt:Date.now()};save();renderCurrentCapital();$('current-capital-amount').value='';document.activeElement?.blur();go('track');void loadCapitalQuote();
+    capitalQuoteGeneration++;capitalQuoteFailures=0;clearTimeout(capitalQuoteTimer);data.currentCapitalQuote={amount,pending:true,recordedAt:Date.now()};save();renderCurrentCapital();document.activeElement?.blur();go('track');void loadCapitalQuote();
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadCapitalQuote()});
   async function readMarketPayload(response){
