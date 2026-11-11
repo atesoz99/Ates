@@ -1020,7 +1020,8 @@ if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.Hesa
 #more .screen-new-row{margin-top:18px}
 .holding-details{margin-top:0}
 </style><style>#trade-price-field,#gold-ounce-field{align-self:start;align-content:start}</style><style>#term>.heading{margin-bottom:18px}#term>.heading>.screen-new-row{margin-top:18px}</style><style>#track-info-overlay #capital-rate-status{font-size:17px!important;line-height:1.6!important}</style><style>#term-entry-overlay .payment-form-heading{margin-bottom:14px}</style><style>#term>.heading>.asset-heading-row{justify-content:flex-start}#term>.heading h1{margin-right:auto}#new-term-open{flex-shrink:0}</style><style>.saved-terms-rate-row{display:flex;align-items:baseline;gap:10px}.saved-terms-rate-row h2{margin:0;flex-shrink:0}.saved-terms-rate-row #rate-status{min-width:0;line-height:1.5}</style><style>.trade-period-selectors{grid-template-columns:repeat(2,minmax(0,1fr))}</style><style>
-html[lang="en-GB"] label[for="track-expense"]{white-space:nowrap;font-size:14px!important}
+html[lang="en-GB"] label[for="track-expense"]{white-space:normal;font-size:14px!important}
+@media(max-width:340px){html[lang="en-GB"] label[for="track-income"],html[lang="en-GB"] label[for="track-expense"]{min-height:2.6em;line-height:1.3}}
 html[lang="en-GB"] .allocation-usd-cash>div{min-width:0;flex:1;container-type:inline-size}
 html[lang="en-GB"] .allocation-usd-cash strong{white-space:nowrap;font-size:clamp(10px,8.5cqw,15px)!important}
 .saved-terms-rate-row{flex-wrap:wrap;column-gap:10px;row-gap:4px}.saved-terms-rate-row #rate-status{white-space:nowrap;flex:0 0 auto;max-width:100%}
