@@ -1397,6 +1397,14 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
     try{const response=await fetch(url,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error('Quote unavailable');return await readMarketPayload(response)}catch(error){clearTimeout(timer);try{return await new Promise((resolve,reject)=>{const request=new XMLHttpRequest();request.open('GET',url+'&transport=xhr');request.timeout=12000;request.onload=()=>{if(request.status<200||request.status>=300){reject(Error('Quote unavailable'));return}readMarketPayload({text:async()=>request.responseText}).then(resolve,reject)};request.onerror=()=>reject(Error('Quote connection failed'));request.ontimeout=()=>reject(Error('Quote timed out'));request.send()})}catch{throw error}}finally{clearTimeout(timer)}
   }
+  function parseCapitalMarket(payload){
+    // Equivalents need selling prices, not the provider's daily change field.
+    // Keep timestamp, same-day and freshness validation unchanged.
+    if(!payload||typeof payload!=='object')return null;
+    const copy={Update_Date:payload.Update_Date};
+    for(const key of ['USD','EUR','GBP','GRA','GUMUS'])copy[key]={Selling:payload[key]?.Selling,Change:0};
+    return usableLiveCapitalMarket(parseLiveDailyMarket(copy));
+  }
   async function loadCapitalQuote(){
     const state=data.currentCapitalQuote;if(!state?.pending||resetInProgress)return;clearTimeout(capitalQuoteTimer);capitalQuoteTimer=null;if(document.hidden)return;
     const generation=capitalQuoteGeneration;
@@ -1406,7 +1414,7 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
       try{
         // Refresh even when same-day rates are already displayed.
         await loadLiveDailyMarket(true);
-        const market=usableLiveCapitalMarket(liveDailyMarket)||parseLiveDailyMarket(await fetchLiveMarketPayload('https://finans.truncgil.com/v4/today.json?capital='+Date.now()));if(!market||market.stale||istanbulParts(new Date(market.at)).date!==istanbulParts().date||usableCapitalRates(state)&&market.at<Number(state.marketAt))throw Error('Today quote required');
+        const market=usableLiveCapitalMarket(liveDailyMarket)||parseCapitalMarket(await fetchLiveMarketPayload('https://finans.truncgil.com/v4/today.json?capital='+Date.now()));if(!market||market.stale||istanbulParts(new Date(market.at)).date!==istanbulParts().date||usableCapitalRates(state)&&market.at<Number(state.marketAt))throw Error('Today quote required');
         const rates=Object.fromEntries(['Dolar','Euro','Pound','Gram altın','Gram gümüş'].map(a=>[a,market.pairs[a]?.current]));
         if(!Object.values(rates).every(v=>Number.isFinite(v)&&v>0))throw Error('Incomplete quote');
         if(resetInProgress||generation!==capitalQuoteGeneration||data.currentCapitalQuote!==state)return;
@@ -1420,6 +1428,7 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     capitalQuoteGeneration++;capitalQuoteFailures=0;clearTimeout(capitalQuoteTimer);data.currentCapitalQuote={amount,pending:true,recordedAt:Date.now()};save();renderCurrentCapital();document.activeElement?.blur();go('track');void loadCapitalQuote();
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadCapitalQuote()});
+  window.addEventListener('online',()=>{if(data.currentCapitalQuote?.pending)void loadCapitalQuote()});
   function completeMarketFields(text){
     // Recover only fully delimited top-level values. Never complete a string,
     // number or nested record from a provider response cut off during transfer.
