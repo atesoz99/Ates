@@ -2943,7 +2943,7 @@ bind('trade-form',async()=>{const asset=$('asset').value;if(asset==='Eurobond $'
     // Include previous months for the inbox and the next 12 months for iOS scheduling.
     for(let offset=-2;offset<=12;offset++){
       const first=new Date(year,month+offset,1),y=first.getFullYear(),m=first.getMonth(),last=new Date(y,m+1,0,9,5);
-      add('monthly-'+localDateKey(last),last,language==='en'?"Remember to add last month’s record in Overview. Enter your income, expenses and total balance.":'Takip bölümünde geçtiğimiz ayın aylık kaydını girmeyi unutma. Gelirini, giderini ve toplam paranı gir.');
+      add('monthly-'+localDateKey(last),last,language==='en'?"Remember to add last month’s record in Overview. Enter your income, expenses and total balance. If the market is closed, it is recommended that you enter your balance on the first day the market reopens.":'Takip bölümünde geçtiğimiz ayın aylık kaydını girmeyi unutma. Gelir-giderini ve toplam ana paranı gir. Piyasa kapalıysa ana para girişini piyasanın açıldığı ilk gün yapmanız önerilir.');
       for(const payment of data.recurring.filter(p=>paymentKind(p)==='monthly')){const due=new Date(y,m,Math.min(Number(payment.day),new Date(y,m+1,0).getDate()),10,0),at=new Date(due);at.setDate(at.getDate()-1);add('payment-'+payment.id+'-'+localDateKey(due),at,language==='en'?`Your "${payment.name}" payment is due tomorrow!`:`Yarın "${payment.name}" ödemeniz var!`);add('payment-'+payment.id+'-'+localDateKey(due)+'-today',due,language==='en'?`Your "${payment.name}" payment is due today!`:`Bugün "${payment.name}" ödemeniz var!`);}
     }
     const annualFrom=localDateKey(new Date(reference.getTime()-62*86400000)),annualTo=`${year+2}-12-31`;
