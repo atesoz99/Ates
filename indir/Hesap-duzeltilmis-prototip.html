@@ -1066,7 +1066,7 @@ html[lang="en-GB"] #term-form #term-start-picker,html[lang="en-GB"] #term-form #
 #trade-summary .average-price-grid.average-wrapped>.average-price-value{display:contents}
 #trade-summary .average-price-grid.average-wrapped .average-ounce-group{grid-column:1 / -1;justify-self:start;text-align:left}
 </style><style>
-.term-card-heading{align-items:flex-start;gap:10px}.term-card-heading-copy{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;min-width:0}.term-start-rate{font-size:14px;line-height:1.35;font-weight:400;color:var(--muted)}
+.term-card-heading{align-items:flex-start;gap:10px}.term-card-heading-copy{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;min-width:0}.term-start-rate{display:block;font-size:14px;line-height:1.35;font-weight:400;color:var(--muted)}
 #past-terms{margin-top:24px}#past-terms>.section-head{margin-bottom:16px}
 </style></head><body>
 <div class="app">
@@ -2907,7 +2907,7 @@ function renderTradeSummary(preserveFields=false){
 if(!$('calendar-overlay').hidden)renderCalendar();if($('charts').classList.contains('active'))renderGraphCharts();else renderAssetAllocation();renderTradeSummary(preserveFields);renderSelectedTradeList();
      const renderTermCard=x=>{
       const past=!!x.tryEnd&&x.tryEnd<localToday();
-      const startHeader='<div class="row-between term-card-heading"><div class="term-card-heading-copy"><strong class="term-record-date">'+(reminderTerm(x)?maturityTitle(x):fmtSlashDate(x.start))+'</strong>'+(!reminderTerm(x)?'<span class="term-start-rate"><span>Vade Başı $ Kuru:</span> <span>'+fxText(x.startFx)+'</span></span>':'')+'</div><button class="text-button" data-delete="terms" data-id="'+escapeHTML(String(x.id))+'">Sil</button></div>';
+      const startHeader='<div class="row-between term-card-heading"><strong class="term-record-date">'+(reminderTerm(x)?maturityTitle(x):fmtSlashDate(x.start))+'</strong><button class="text-button" data-delete="terms" data-id="'+escapeHTML(String(x.id))+'">Sil</button></div>'+(!reminderTerm(x)?'<div class="vade-row term-start-rate"><span>Vade Başı $ Kuru:</span> <span>'+fxText(x.startFx)+'</span></div>':'');
 
       if(reminderTerm(x)){
         const days=termDaysLeft(x.tryEnd);
