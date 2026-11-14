@@ -1050,7 +1050,7 @@ html[lang="en-GB"] #term-form #term-start-picker,html[lang="en-GB"] #term-form #
 #trade-year-summary .annual-quantity-unit{white-space:nowrap}
 #trade-year-summary .annual-very-wide-card{grid-column:1 / -1}
 @media(max-width:380px){#trade-year-summary .annual-wide-card{grid-column:1 / -1}}
-</style><style>[data-info-updated]>.account-sheet,#charts-info-overlay>.account-sheet{height:100%;display:flex;flex-direction:column;overflow:hidden}[data-info-updated] .info-copy p,#charts-info-overlay .info-copy p{font-size:17px;line-height:1.6;color:var(--muted);margin:16px 0;text-indent:1.5em}</style><style>#home-monthly-section .section-head>[data-target="capital-form-heading"]{margin-left:auto}</style><style>.info-copy-scroll{box-sizing:border-box;margin-inline-end:-20px;padding-inline-end:20px;scrollbar-gutter:auto}</style><style>
+</style><style>[data-info-updated]>.account-sheet,#charts-info-overlay>.account-sheet{height:100%;display:flex;flex-direction:column;overflow:hidden}[data-info-updated] .info-copy p,#charts-info-overlay .info-copy p{font-size:17px;line-height:1.6;color:var(--muted);margin:16px 0;text-indent:1.5em}</style><style>#home-monthly-section .section-head>[data-target="capital-form-heading"]{margin-left:auto}</style><style>.info-copy-scroll{box-sizing:border-box;margin-inline:-20px;padding-inline:0;scrollbar-gutter:auto}.info-copy-scroll>.info-copy{box-sizing:border-box;padding-inline:20px}</style><style>
 #trade-summary .pnl-primary-percent,#trade-summary .pnl-ounce-conversion{display:inline-block;white-space:nowrap;font-variant-numeric:tabular-nums}
 #trade-summary .held-usd{display:inline-block;white-space:nowrap}
 #trade-summary .held-conversion-wrapped>.quantity-unit{display:contents}
@@ -1994,8 +1994,8 @@ function renderTradeSummary(preserveFields=false){
     const decemberCapital=data.capital.find(x=>x.date.slice(0,7)===decemberKey),decemberFx=capitalRate(decemberCapital),decemberTry=decemberCapital?Number(decemberCapital.amount):null,decemberUsd=decemberCapital&&decemberFx?.rate>0?Number(decemberCapital.amount)/decemberFx.rate:null;
     let prevUsd=null,firstUsd=null,prevTry=null,firstTry=null;const monthlyUsd=[],yearUsd=[],monthlyTry=[],yearTry=[];
     graphMonths.forEach((_,i)=>{const m=String(i+1).padStart(2,'0'),u=usdMap.get(m),t=tryMap.get(m);
-      if(u===undefined){monthlyUsd.push(null);yearUsd.push(null)}else{if(firstUsd===null)firstUsd=u;const prior=i===0?decemberUsd:prevUsd;monthlyUsd.push(prior!==null&&prior!==0?(u-prior)/Math.abs(prior)*100:null);yearUsd.push(firstUsd!==0&&(i!==0||decemberUsd!==null&&decemberUsd!==0)?(u-firstUsd)/Math.abs(firstUsd)*100:null);prevUsd=u}
-      if(t===undefined){monthlyTry.push(null);yearTry.push(null)}else{if(firstTry===null)firstTry=t;const prior=i===0?decemberTry:prevTry;monthlyTry.push(prior!==null&&prior!==0?(t-prior)/Math.abs(prior)*100:null);yearTry.push(firstTry!==0&&(i!==0||decemberTry!==null&&decemberTry!==0)?(t-firstTry)/Math.abs(firstTry)*100:null);prevTry=t}
+      if(u===undefined){monthlyUsd.push(null);yearUsd.push(null)}else{if(firstUsd===null)firstUsd=u;const prior=i===0?decemberUsd:prevUsd;monthlyUsd.push(prior!==null&&prior!==0?(u-prior)/Math.abs(prior)*100:null);yearUsd.push(i>0&&firstUsd!==0?(u-firstUsd)/Math.abs(firstUsd)*100:null);prevUsd=u}
+      if(t===undefined){monthlyTry.push(null);yearTry.push(null)}else{if(firstTry===null)firstTry=t;const prior=i===0?decemberTry:prevTry;monthlyTry.push(prior!==null&&prior!==0?(t-prior)/Math.abs(prior)*100:null);yearTry.push(i>0&&firstTry!==0?(t-firstTry)/Math.abs(firstTry)*100:null);prevTry=t}
     });
      const changeSeries=(m,y)=>[{name:'Aylık Değişim',type:'line',values:m,color:'#dc9845'},{name:'Yılın Başından Bu Yana',type:'line',values:y,color:'#b34e50'}];
      setViewMarkup($('graph-capital-change'),chartSvg(changeSeries(monthlyUsd,yearUsd),true));
