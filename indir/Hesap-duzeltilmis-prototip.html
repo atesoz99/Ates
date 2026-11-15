@@ -1975,7 +1975,7 @@ function renderTradeSummary(preserveFields=false){
     const held=quantityRow('Eldeki:',s.held,a==='Dolar'?'':` <span class="held-usd">(${usdValue===null?'—':dollar(usdValue)})</span>` )+'</div>';
     const pnl=`<span class="${s.pnl>0?'trade-gain':s.pnl<0?'trade-loss':''}">${s.uncovered||s.held>0&&s.avg<=0?'—':s.completeCurrent&&s.pnl!==null?`<span class="pnl-primary-money">${money(s.pnl)}</span>`:'Güncel fiyat bekleniyor'} <span class="pnl-primary-percent">· ${s.percent===null?'—':`${s.percent>0?'+':''}%${s.percent.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}</span></span>`;
     const missingOunceMessage=metal&&(s.missingOunce||s.usdPnl===null);
-    if(missingOunceMessage&&!(data.hiddenTradeAssets||[]).includes(a))missingOunceRows.push(`<div class="metal-return"><span>${title[a]} Ons-$:</span> <span>Ons fiyat bilgisinde eksik veri var.</span></div>`);
+    if(missingOunceMessage&&!(data.hiddenTradeAssets||[]).includes(a))missingOunceRows.push(`<div class="metal-return"><span>${title[a]}:</span> <span>Ons fiyat bilgisinde eksik veri var.</span></div>`);
     const metalPnl=metal&&!missingOunceMessage?`<div class="metal-return">Ons-$: ${s.missingOunce?'Ons fiyat bilgisinde eksik veri var.':s.usdPnl===null?'Ons fiyat bilgisinde eksik veri var.':`<span class="${s.usdPnl>0?'trade-gain':s.usdPnl<0?'trade-loss':''}"><span class="pnl-ounce-money">${dollar(s.usdPnl)}</span> <span class="pnl-ounce-conversion">(${money(s.usdPnl*(tradeCurrentPrices[a]?.fxRate||0))})</span> · ${s.usdPercent===null?'—':`${s.usdPercent>0?'+':''}%${s.usdPercent.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}</span>`}${!s.missingOunce&&s.usdPnl!==null?tradeChangeRows(a,true):''}</div>`:'';
     return `<div class="trade-card"><h3>${title[a]}</h3><div class="small"><span class="pnl-primary-label">Kâr-Zarar:</span> ${pnl}${tradeChangeRows(a)}${metalPnl}<div class="holding-details">${totals}${held}<div class="average-price-grid"><span>Ortalama:</span><span class="average-price-value">${s.held>0&&s.avg>0?money(s.avg):'—'}${metal&&s.held>0&&s.usdAvg>0?` / <span class="average-ounce-group">${dollar(s.usdAvg*31.1034768)} ${calendarText('(Ons)','(Oz)')}</span>`:''}</span></div></div></div></div>`
   });
@@ -2537,6 +2537,8 @@ function renderTradeSummary(preserveFields=false){
   "Güncel fiyatlar bekleniyor": "Awaiting the latest prices",
   "Güncel fiyatlardan biri bekleniyor": "Awaiting one or more current prices",
   "Dolar bazlı hesaplama için veri bekleniyor.": "Awaiting data to calculate the return in USD.",
+  "Gram Altın:": "Gold Grams:",
+  "Gram Gümüş:": "Silver Grams:",
   "Gram Altın Ons-$:": "Gold Grams Return in USD:",
   "Gram Gümüş Ons-$:": "Silver Grams Return in USD:",
   "Ons fiyat bilgisinde eksik veri var.": "Some USD prices per troy ounce are missing.",
