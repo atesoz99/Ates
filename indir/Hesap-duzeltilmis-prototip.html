@@ -2268,8 +2268,8 @@ function renderTradeSummary(preserveFields=false){
   "Kayıtlı Vadeler": "Saved Deposits",
   "Geçmiş Vadeler": "Past Deposits",
   "Vade Süresi": "Deposit Duration",
-  "$ Kuru (Vade Başı / Şimdi):": "USD/TRY Rate (Initial / Current):",
-  "$ Kuru (Vade Başı / Sonu):": "USD/TRY Rate (Initial / At Maturity):",
+  "$ Kuru (Vade Başı/Şimdi):": "USD/TRY Rate (Initial/Current):",
+  "$ Kuru (Vade Başı/Sonu):": "USD/TRY Rate (Initial/At Maturity):",
   "Yatırılan Para (TL / İlk / Vade Sonu)": "Principal\n(TRY / Initial / At Maturity)",
   "Kazanılan Gelir (TL / İlk / Vade Sonu)": "Earned Interest\n(TRY / Initial / At Maturity)",
   "Vade Başı $ Kuru:": "Initial USD/TRY Rate:",
@@ -2980,7 +2980,7 @@ function renderTradeSummary(preserveFields=false){
 if(!$('calendar-overlay').hidden)renderCalendar();if($('charts').classList.contains('active'))renderGraphCharts();else renderAssetAllocation();renderTradeSummary(preserveFields);renderSelectedTradeList();
      const renderTermCard=x=>{
       const past=!!x.tryEnd&&x.tryEnd<localToday(),matured=!!x.tryEnd&&isTermMatured(x.tryEnd),currentFx=matured?Number(x.endFx)||0:(liveDollarRate||Number(x.currentFx)||0);
-      const startHeader='<div class="row-between term-card-heading"><strong class="term-record-date">'+(reminderTerm(x)?maturityTitle(x):fmtSlashDate(x.start))+'</strong><button class="text-button" data-delete="terms" data-id="'+escapeHTML(String(x.id))+'">Sil</button></div>'+(!reminderTerm(x)?'<div class="vade-row term-start-rate"><span>'+(matured?'$ Kuru (Vade Başı / Sonu):':'$ Kuru (Vade Başı / Şimdi):')+'</span> <span class="term-start-rate-values">'+fxText(x.startFx)+' / '+(currentFx>0?fxText(currentFx):'—')+'</span></div>':'');
+      const startHeader='<div class="row-between term-card-heading"><strong class="term-record-date">'+(reminderTerm(x)?maturityTitle(x):fmtSlashDate(x.start))+'</strong><button class="text-button" data-delete="terms" data-id="'+escapeHTML(String(x.id))+'">Sil</button></div>'+(!reminderTerm(x)?'<div class="vade-row term-start-rate"><span>'+(matured?'$ Kuru (Vade Başı/Sonu):':'$ Kuru (Vade Başı/Şimdi):')+'</span> <span class="term-start-rate-values">'+fxText(x.startFx)+' / '+(currentFx>0?fxText(currentFx):'—')+'</span></div>':'');
 
       if(reminderTerm(x)){
         const days=termDaysLeft(x.tryEnd);
