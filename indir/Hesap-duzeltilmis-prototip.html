@@ -1126,9 +1126,7 @@ html[lang="en-GB"] #term-form #term-start-picker,html[lang="en-GB"] #term-form #
 #term-list>#past-terms{margin-top:12px}
 #past-terms .past-terms-cards{display:flex;flex-direction:column;gap:12px}
 </style><style>
-#term-entry-overlay::before,#payment-entry-overlay::before{content:"";position:fixed;pointer-events:none;box-sizing:border-box;top:var(--entry-fill-top,0px);left:var(--entry-fill-left,0px);width:var(--entry-fill-width,0px);height:var(--entry-fill-height,0px);background:var(--surface);border:1px solid var(--line);border-radius:12px}
-#term-entry-overlay>.account-sheet,#payment-entry-overlay>.account-sheet{position:relative;z-index:1;background:transparent;box-shadow:none}
-#term-entry-overlay>.account-sheet>.panel,#payment-entry-overlay>.account-sheet>.panel{background:transparent;border-color:transparent;box-shadow:none}
+#term-entry-overlay::before,#payment-entry-overlay::before{content:"";position:fixed;z-index:-1;pointer-events:none;box-sizing:border-box;top:var(--entry-mask-top,0px);left:var(--entry-mask-left,0px);width:var(--entry-mask-width,0px);height:var(--entry-mask-height,0px);background:var(--bg);border:0;border-radius:16px}
 </style></head><body>
 <div class="app">
   <header><div class="brand"><strong>Hesap</strong></div><div class="header-actions"><button class="menu-button notification-button" id="notifications-open" type="button" aria-label="Bildirimleri aç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i id="notification-dot" hidden></i></button><button class="menu-button" id="calendar-open" type="button" aria-label="Takvimi aç"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M7 15h2M12 15h2M7 18h2"/></svg></button><button class="menu-button" id="account-open" type="button" aria-label="Hesap menüsünü aç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button></div></header>
@@ -3353,11 +3351,9 @@ bind('trade-form',async()=>{const asset=$('asset').value;if(asset==='Eurobond $'
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('notifications-overlay').hidden)closeNotifications();});
   
   const screenDialogTriggers={};
-  function fitEntryBackdrop(){
-    for(const key of ['term-entry','payment-entry']){const overlay=$(key+'-overlay');if(overlay.hidden)continue;const panel=overlay.querySelector('.account-sheet>.panel'),header=document.querySelector('.app>header'),tabs=document.querySelector('.tabs');if(!panel||!header||!tabs)continue;const r=panel.getBoundingClientRect(),top=Math.max(0,header.getBoundingClientRect().bottom),bottom=tabs.getBoundingClientRect().top;for(const [name,value] of Object.entries({top,left:r.left,width:r.width,height:Math.max(0,bottom-top)}))overlay.style.setProperty('--entry-fill-'+name,value+'px')}
-  }
-  window.addEventListener('resize',fitEntryBackdrop);
-  function openScreenDialog(key){const el=$(key+'-overlay');screenDialogTriggers[key]=document.activeElement;el.hidden=false;syncModalScroll();el.scrollTop=0;const copy=el.querySelector('.info-copy-scroll');if(copy)copy.scrollTop=0;const sheet=el.querySelector('.account-sheet');sheet.scrollTop=0;sheet.focus({preventScroll:true});fitEntryBackdrop();}
+  function fitEntryMask(){for(const key of ['term-entry','payment-entry']){const overlay=$(key+'-overlay');if(overlay.hidden)continue;const sheet=overlay.querySelector('.account-sheet'),header=document.querySelector('.app>header'),tabs=document.querySelector('.tabs');if(!sheet||!header||!tabs)continue;const r=sheet.getBoundingClientRect(),top=Math.max(0,header.getBoundingClientRect().bottom)+12,bottom=tabs.getBoundingClientRect().top-12;for(const [name,value] of Object.entries({top,left:r.left,width:r.width,height:Math.max(0,bottom-top)}))overlay.style.setProperty('--entry-mask-'+name,value+'px')}}
+  window.addEventListener('resize',fitEntryMask);
+  function openScreenDialog(key){const el=$(key+'-overlay');screenDialogTriggers[key]=document.activeElement;el.hidden=false;syncModalScroll();el.scrollTop=0;const copy=el.querySelector('.info-copy-scroll');if(copy)copy.scrollTop=0;const sheet=el.querySelector('.account-sheet');sheet.scrollTop=0;sheet.focus({preventScroll:true});fitEntryMask();}
   function closeScreenDialog(key,restoreFocus=true){const el=$(key+'-overlay');el.hidden=true;syncModalScroll();if(restoreFocus)screenDialogTriggers[key]?.focus({preventScroll:true});}
   for(const key of ['track-info','term-info','charts-info','term-entry','payment-entry']){
     $(key+'-close').addEventListener('click',()=>closeScreenDialog(key));
