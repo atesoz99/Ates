@@ -1540,7 +1540,7 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
   function alignCapitalEntry(){
     const panel=$('capital-form-heading').closest('.panel'),screen=$('track'),preview=$('annual-income').closest('.summary'),safeTop=parseFloat(getComputedStyle(document.querySelector('.app')).paddingTop)||0;
     screen.style.minHeight=(panel.getBoundingClientRect().top-screen.getBoundingClientRect().top+window.innerHeight)+'px';
-    const previewGap=$('current-capital-panel').hidden?15:22;
+    const previewGap=$('current-capital-panel').hidden?1:22;
     window.scrollTo({top:Math.max(0,preview.getBoundingClientRect().top+window.scrollY-safeTop-previewGap),behavior:'instant'});
   }
   $('capital-form-heading').addEventListener('click',()=>{setCapitalEntryMode('monthly');alignCapitalEntry()});
