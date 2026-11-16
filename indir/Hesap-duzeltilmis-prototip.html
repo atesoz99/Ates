@@ -2999,7 +2999,7 @@ function renderTradeSummary(preserveFields=false){
     }
   }
   let lastTermMarkup=null,pastTermsExpanded=false;
-  $('term-list').addEventListener('click',event=>{if(!event.target.closest('#past-terms-show-all'))return;pastTermsExpanded=true;render(true);});
+  $('term-list').addEventListener('click',event=>{if(!event.target.closest('#past-terms-show-all'))return;pastTermsExpanded=!pastTermsExpanded;render(true);});
   $('term-list').addEventListener('change',event=>{
     const input=event.target.closest('[data-term-holding-exclude]');if(!input)return;
     const term=data.terms.find(t=>String(t.id)===input.dataset.termHoldingExclude);if(!term||!termMaturityDay(term))return;
@@ -3084,7 +3084,7 @@ if(!$('calendar-overlay').hidden)renderCalendar();if($('charts').classList.conta
     };
     const activeTerms=data.terms.filter(x=>!x.tryEnd||x.tryEnd>=localToday()).sort((a,b)=>(a.tryEnd||'9999-12-31').localeCompare(b.tryEnd||'9999-12-31'));
     const pastTerms=data.autoDeleteMaturedTerms?[]:data.terms.filter(x=>x.tryEnd&&x.tryEnd<localToday()).sort((a,b)=>b.tryEnd.localeCompare(a.tryEnd));
-    const termMarkup=(activeTerms.length?activeTerms.map(renderTermCard).join(''):data.terms.length?'':'<div class="empty">Henüz vade kaydı eklemedin.</div>')+(pastTerms.length?'<section id="past-terms"><div class="section-head term-group-heading"><div><h2 class="section-title">Geçmiş Vadeler</h2></div></div><div class="past-terms-cards" id="past-terms-cards">'+(pastTermsExpanded?pastTerms:pastTerms.slice(0,1)).map(renderTermCard).join('')+'</div>'+(!pastTermsExpanded&&pastTerms.length>1?'<div class="past-terms-footer"><button type="button" class="text-button" id="past-terms-show-all" aria-controls="past-terms-cards" aria-expanded="false">'+calendarText('Tümünü Gör →','View All →')+'</button></div>':'')+'</section>':'');updateTermList(termMarkup);
+    const termMarkup=(activeTerms.length?activeTerms.map(renderTermCard).join(''):data.terms.length?'':'<div class="empty">Henüz vade kaydı eklemedin.</div>')+(pastTerms.length?'<section id="past-terms"><div class="section-head term-group-heading"><div><h2 class="section-title">Geçmiş Vadeler</h2></div></div><div class="past-terms-cards" id="past-terms-cards">'+(pastTermsExpanded?pastTerms:pastTerms.slice(0,1)).map(renderTermCard).join('')+'</div>'+(pastTerms.length>1?'<div class="past-terms-footer"><button type="button" class="text-button" id="past-terms-show-all" aria-controls="past-terms-cards" aria-expanded="'+pastTermsExpanded+'">'+(pastTermsExpanded?calendarText('Daha Az Göster →','Show Less →'):calendarText('Tümünü Gör →','View All →'))+'</button></div>':'')+'</section>':'');updateTermList(termMarkup);
 
      renderPayments();refreshNoDataMarkers();
     applyLanguage();
