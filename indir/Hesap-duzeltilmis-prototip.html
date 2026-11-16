@@ -1126,6 +1126,7 @@ html[lang="en-GB"] #term-form #term-start-picker,html[lang="en-GB"] #term-form #
 #term-list>#past-terms{margin-top:12px}
 #past-terms .past-terms-cards{display:flex;flex-direction:column;gap:12px}
 .past-terms-footer{display:flex;justify-content:flex-end;margin-top:12px}
+.past-terms-cards>.past-terms-footer{margin-top:0}
 #past-terms-show-all{font-size:15px}
 </style><style>
 #term-entry-overlay::before,#payment-entry-overlay::before{content:"";position:fixed;z-index:-1;pointer-events:none;box-sizing:border-box;top:var(--entry-mask-top,0px);left:var(--entry-mask-left,0px);width:var(--entry-mask-width,0px);height:var(--entry-mask-height,0px);background:var(--bg);border:0;border-radius:16px 16px 0 0}
@@ -3084,7 +3085,8 @@ if(!$('calendar-overlay').hidden)renderCalendar();if($('charts').classList.conta
     };
     const activeTerms=data.terms.filter(x=>!x.tryEnd||x.tryEnd>=localToday()).sort((a,b)=>(a.tryEnd||'9999-12-31').localeCompare(b.tryEnd||'9999-12-31'));
     const pastTerms=data.autoDeleteMaturedTerms?[]:data.terms.filter(x=>x.tryEnd&&x.tryEnd<localToday()).sort((a,b)=>b.tryEnd.localeCompare(a.tryEnd));
-    const termMarkup=(activeTerms.length?activeTerms.map(renderTermCard).join(''):data.terms.length?'':'<div class="empty">Henüz vade kaydı eklemedin.</div>')+(pastTerms.length?'<section id="past-terms"><div class="section-head term-group-heading"><div><h2 class="section-title">Geçmiş Vadeler</h2></div></div><div class="past-terms-cards" id="past-terms-cards">'+(pastTermsExpanded?pastTerms:pastTerms.slice(0,1)).map(renderTermCard).join('')+'</div>'+(pastTerms.length>1?'<div class="past-terms-footer"><button type="button" class="text-button" id="past-terms-show-all" aria-controls="past-terms-cards" aria-expanded="'+pastTermsExpanded+'">'+(pastTermsExpanded?calendarText('Daha Az Göster →','Show Less →'):calendarText('Tümünü Gör →','View All →'))+'</button></div>':'')+'</section>':'');updateTermList(termMarkup);
+    const pastTermsToggle=pastTerms.length>1?'<div class="past-terms-footer"><button type="button" class="text-button" id="past-terms-show-all" aria-controls="past-terms-cards" aria-expanded="'+pastTermsExpanded+'">'+(pastTermsExpanded?calendarText('Daha Az Göster →','Show Less →'):calendarText('Tümünü Gör →','View All →'))+'</button></div>':'';
+    const termMarkup=(activeTerms.length?activeTerms.map(renderTermCard).join(''):data.terms.length?'':'<div class="empty">Henüz vade kaydı eklemedin.</div>')+(pastTerms.length?'<section id="past-terms"><div class="section-head term-group-heading"><div><h2 class="section-title">Geçmiş Vadeler</h2></div></div><div class="past-terms-cards" id="past-terms-cards">'+renderTermCard(pastTerms[0])+pastTermsToggle+(pastTermsExpanded?pastTerms.slice(1).map(renderTermCard).join(''):'')+'</div></section>':'');updateTermList(termMarkup);
 
      renderPayments();refreshNoDataMarkers();
     applyLanguage();
