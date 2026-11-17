@@ -3262,11 +3262,9 @@ bind('trade-form',async()=>{const asset=$('asset').value;if(asset==='Eurobond $'
       // Write the authoritative empty state first; remove only this app's caches.
       const fresh=JSON.parse(JSON.stringify(empty));localStorage.setItem(KEY,JSON.stringify(fresh));
       for(const [key] of saved)if(key!==KEY)localStorage.removeItem(key);
-      const resetAt=Date.now();localStorage.setItem(NOTICE_KEY,JSON.stringify({dismissed:{},startedAt:resetAt,dismissedBefore:resetAt,readAt:resetAt}));
       data=fresh;sendNative({action:'widgetSnapshot',dailyGoal:0,language:fresh.language});
       window.location.reload();
     }catch{
-      if(!saved.some(([key])=>key===NOTICE_KEY))try{localStorage.removeItem(NOTICE_KEY)}catch{}
       for(const [key,value] of saved)try{if(value!==null)localStorage.setItem(key,value)}catch{}
       data=previousData;resetInProgress=false;setDataActionBusy(false);if(requestID)sendNative({action:'resetAborted',requestID});nativeScheduleSignature='';refreshNotifications();toast('Veriler silinemedi, mevcut kayıtlar korundu.');
     }
@@ -3383,11 +3381,9 @@ bind('trade-form',async()=>{const asset=$('asset').value;if(asset==='Eurobond $'
   if(!noticeState||typeof noticeState!=='object'||Array.isArray(noticeState))noticeState={};
   if(!noticeState.dismissed||typeof noticeState.dismissed!=='object'||Array.isArray(noticeState.dismissed))noticeState.dismissed={};
   const freshAppInstall=!storageParseFailed&&Object.keys(storedData).length===0;
-  const emptyFinancialHistory=!['capital','budgets','trades','terms','recurring'].some(key=>Array.isArray(data[key])&&data[key].length>0)&&otherTlTotal()===0&&!['usd','eur'].some(key=>Number(data.eurobond?.[key])>0);
-  if(freshAppInstall||!Number.isFinite(noticeState.startedAt)||(emptyFinancialHistory&&noticeState.startedAt<=0)){
+  if(freshAppInstall||!Number.isFinite(noticeState.startedAt)){
     if(freshAppInstall)noticeState={dismissed:{}};
-    noticeState.startedAt=Date.now();
-    if(emptyFinancialHistory&&!freshAppInstall)noticeState.dismissedBefore=Math.max(Number(noticeState.dismissedBefore)||0,noticeState.startedAt);
+    noticeState.startedAt=freshAppInstall||!hadNoticeState?Date.now():0;
     if(freshAppInstall)noticeState.welcomeAt=noticeState.startedAt;
     try{storeAppValue(NOTICE_KEY,JSON.stringify(noticeState))}catch{}
   }
