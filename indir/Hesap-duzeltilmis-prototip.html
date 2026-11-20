@@ -1217,6 +1217,14 @@ html[lang="en-GB"] #term-form #term-start-picker,html[lang="en-GB"] #term-form #
 #track #capital-prev-usd .previous-change-try{display:block;font-size:16px;font-weight:400;line-height:1.45;color:inherit;white-space:nowrap}
 </style><style>
 #term-list .vade-kpi small,#term-list .term-sub-label,#term-list .term-start-rate,#term-list .term-holding-toggle{font-size:15px}
+</style><style>
+#day-label{font-size:14px}
+#trade-list .list-row small{font-size:15px}
+#upcoming-list .payment-record-date,#rec-list .payment-record-date{font-size:15px}
+#track #capital-change-percent,#track #capital-change-usd-percent{font-size:15px!important}
+#track .summary-change-percent,#track .change-conversion,#track #capital-prev-usd .previous-change-try{font-size:15px}
+#capital-list .capital-change-percent,#budget-list-track .history-change-percent,#budget-list .history-change-percent{font-size:15px}
+#budget-list-track .budget-history-details>small,#budget-list .budget-history-details>small{font-size:15px}
 </style></head><body>
 <div class="app">
   <header><div class="brand"><strong>Hesap</strong></div><div class="header-actions"><button class="menu-button notification-button" id="notifications-open" type="button" aria-label="Bildirimleri aç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i id="notification-dot" hidden></i></button><button class="menu-button" id="comparison-open" type="button" aria-label="Karşılaştırma birimini seç" aria-haspopup="dialog" aria-controls="comparison-overlay"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 6v12m3-9c-1-2-6-2-6 1s6 1 6 4-5 3-6 1"/></svg></button><button class="menu-button" id="calendar-open" type="button" aria-label="Takvimi aç"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M7 15h2M12 15h2M7 18h2"/></svg></button><button class="menu-button" id="account-open" type="button" aria-label="Hesap menüsünü aç"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button></div></header>
@@ -1720,9 +1728,9 @@ html[lang="en-GB"] #term-form #term-start-picker,html[lang="en-GB"] #term-form #
     syncPaymentFields();syncPaymentView();
     const kind=$('payment-type').value||'monthly',records=data.recurring.filter(p=>paymentKind(p)===kind&&(kind!=='yearly'||paymentRepeatYears(p)||p.date.slice(0,4)>=String(istanbulParts().year))),ordered=cyclicRecurring(records);
     $('payment-total-title').textContent=kind==='yearly'?'Yıllık Toplam':'Aylık Toplam';const total=kind==='yearly'?annualPaymentsTotal():records.reduce((sum,p)=>sum+Number(p.amount),0);$('rec-total').textContent=money(total);$('payment-equivalent-label').textContent=calendarText(kind==='yearly'?'Aylık Ortalama':'Yıllık',kind==='yearly'?'Monthly Average':'Yearly');$('payment-equivalent-amount').textContent=money(kind==='yearly'?total/12:total*12);
-    setViewMarkup($('rec-list'),ordered.length?ordered.map(p=>row('<span data-user-text>'+escapeHTML(p.name)+'</span>',paymentDateText(p)+(p.description?'<br><span data-user-text>'+escapeHTML(p.description)+'</span>':''),money(p.amount),{type:'recurring',id:p.id,edit:true})).join(''):'<div class="empty">'+'Henüz ödeme eklemedin.'+'</div>');
+    setViewMarkup($('rec-list'),ordered.length?ordered.map(p=>row('<span data-user-text>'+escapeHTML(p.name)+'</span>','<span class="payment-record-date">'+paymentDateText(p)+'</span>'+(p.description?'<br><span data-user-text>'+escapeHTML(p.description)+'</span>':''),money(p.amount),{type:'recurring',id:p.id,edit:true})).join(''):'<div class="empty">'+'Henüz ödeme eklemedin.'+'</div>');
     const upcoming=cyclicRecurring(data.recurring.filter(p=>paymentKind(p)==='monthly'||paymentDueDate(p)>=istanbulParts().date)).slice(0,6);
-    setViewMarkup($('upcoming-list'),upcoming.length?upcoming.map(p=>row('<span data-user-text>'+escapeHTML(p.name)+'</span>',paymentDateText(p),money(p.amount))).join(''):'<div class="empty">Henüz düzenli ödeme eklemedin.</div>');
+    setViewMarkup($('upcoming-list'),upcoming.length?upcoming.map(p=>row('<span data-user-text>'+escapeHTML(p.name)+'</span>','<span class="payment-record-date">'+paymentDateText(p)+'</span>',money(p.amount))).join(''):'<div class="empty">Henüz düzenli ödeme eklemedin.</div>');
   }
   let paymentMonthOnly=false,paymentRepeat='yearly',paymentDateDraft=null,datePickerTarget='payment';
   function syncPaymentFields(){
@@ -1773,8 +1781,18 @@ function isMetalAsset(asset){return asset==='Gram altın'||asset==='Gram gümü�
     const previewGap=$('current-capital-panel').hidden?1:22;
     window.scrollTo({top:Math.max(0,preview.getBoundingClientRect().top+window.scrollY-safeTop-previewGap),behavior:'instant'});
   }
-  $('capital-form-heading').addEventListener('click',()=>{setCapitalEntryMode('monthly');alignCapitalEntry()});
-  $('current-capital-tab').addEventListener('click',()=>{setCapitalEntryMode('current');alignCapitalEntry()});
+  let capitalTabSwitchGeneration=0;
+  function switchCapitalEntryTab(mode){
+    const y=window.scrollY,screen=$('track'),top=screen.getBoundingClientRect().top+y,interaction=userScrollGeneration,navigation=navigationGeneration,generation=++capitalTabSwitchGeneration;
+    // Keep enough document height for the same scroll position even when the shorter form opens.
+    screen.style.minHeight=Math.max(parseFloat(screen.style.minHeight)||0,y+window.innerHeight-top)+'px';
+    setCapitalEntryMode(mode);
+    const restore=()=>{if(generation!==capitalTabSwitchGeneration||navigation!==navigationGeneration||interaction!==userScrollGeneration||!screen.classList.contains('active'))return;window.scrollTo({top:y,behavior:'instant'})};
+    restore();requestAnimationFrame(()=>{restore();requestAnimationFrame(restore)});
+  }
+  $('capital-form-heading').addEventListener('click',()=>switchCapitalEntryTab('monthly'));
+  $('current-capital-tab').addEventListener('click',()=>switchCapitalEntryTab('current'));
+
   function capitalEntryTime(record){const time=Number(record?.recordedAt||record?.updatedAt||record?.createdAt);return Number.isFinite(time)&&time>0&&time<=Date.now()+120000?time:record?.date?Date.parse(record.date.slice(0,7)+'-01T00:00:00+03:00'):0}
   function latestCapitalForMonth(monthly,year=null){
     const snapshot=displayCapitalQuote();if(!snapshot||!validCapitalQuote(snapshot))return monthly;
